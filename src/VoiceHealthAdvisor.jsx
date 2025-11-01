@@ -1,0 +1,1119 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone } from 'lucide-react';
+import './App.css';
+
+// Nigerian-specific specialties
+const SPECIALTIES = [
+  { id: 'general', name: 'General Health', icon: '🏥', color: 'bg-blue-500' },
+  { id: 'malaria', name: 'Malaria & Typhoid', icon: '🦟', color: 'bg-orange-500' },
+  { id: 'maternal', name: 'Maternal Health', icon: '🤰', color: 'bg-pink-500' },
+  { id: 'nutrition', name: 'Nutrition', icon: '🥗', color: 'bg-green-500' },
+  { id: 'child', name: 'Child Health', icon: '👶', color: 'bg-yellow-500' },
+  { id: 'mental', name: 'Mental Health', icon: '🧠', color: 'bg-purple-500' },
+];
+
+// Emergency contacts
+const EMERGENCY_CONTACTS = {
+  'Lagos': { emergency: '767 / 112', ambulance: '08023147654', lasema: '767' },
+  'Abuja': { emergency: '112', ambulance: '08037245625' },
+  'General': { emergency: '112', ncdc: '0800-9700-0010' }
+};
+
+// FAQ Questions
+const FAQ_QUESTIONS = [
+  { icon: '🦟', text: 'Treat malaria?', query: 'How can I treat malaria in Nigeria?' },
+  { icon: '🤒', text: 'Typhoid symptoms?', query: 'What are the symptoms of typhoid fever?' },
+  { icon: '🤧', text: 'Common cold?', query: 'How do I treat common cold and flu?' },
+  { icon: '🏥', text: 'Find hospital?', query: 'How do I find the nearest hospital in Nigeria?' },
+  { icon: '💊', text: 'Buy medicines?', query: 'Where can I buy affordable medications in Nigeria?' },
+  { icon: '🆘', text: 'Emergency help?', query: 'What are the emergency numbers in Nigeria?' },
+  { icon: '🤰', text: 'Pregnancy care?', query: 'What are important pregnancy care tips in Nigeria?' },
+  { icon: '👶', text: 'Baby vaccines?', query: 'What vaccines does my baby need in Nigeria?' },
+  { icon: '🩺', text: 'High BP?', query: 'How do I manage high blood pressure in Nigeria?' },
+  { icon: '🤕', text: 'Headache relief?', query: 'How can I treat severe headaches?' },
+  { icon: '🌡️', text: 'High fever?', query: 'What should I do if I have high fever?' },
+  { icon: '💉', text: 'Adult vaccines?', query: 'What vaccines do adults need in Nigeria?' },
+];
+
+// Helper functions for localStorage with 24-hour expiry
+const saveToLocalStorage = (key, data) => {
+  const item = {
+    data: data,
+    timestamp: Date.now(),
+    expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+  };
+  localStorage.setItem(key, JSON.stringify(item));
+};
+
+const getFromLocalStorage = (key) => {
+  const itemStr = localStorage.getItem(key);
+  if (!itemStr) return null;
+  
+  try {
+    const item = JSON.parse(itemStr);
+    const now = Date.now();
+    
+    // Check if expired
+    if (now > item.expiresAt) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    
+    return item.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+function VoiceHealthAdvisor() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedSpecialty, setSelectedSpecialty] = useState('general');
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
+  
+  // Voice states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [handsFreeMode, setHandsFreeMode] = useState(false);
+  
+  // Voice customization
+  const [voiceRate, setVoiceRate] = useState(0.92);
+  const [voicePitch, setVoicePitch] = useState(1.12);
+  const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  
+  const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+
+  // Load chat history when specialty changes
+  useEffect(() => {
+    const savedMessages = getFromLocalStorage(`chat_${selectedSpecialty}`);
+    if (savedMessages && Array.isArray(savedMessages)) {
+      setMessages(savedMessages);
+    } else {
+      setMessages([]);
+    }
+  }, [selectedSpecialty]);
+
+  // Save chat history whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveToLocalStorage(`chat_${selectedSpecialty}`, messages);
+    }
+  }, [messages, selectedSpecialty]);
+
+  // Clean up expired chats on mount
+  useEffect(() => {
+    const cleanupExpiredChats = () => {
+      SPECIALTIES.forEach(specialty => {
+        getFromLocalStorage(`chat_${specialty.id}`); // This will auto-remove if expired
+      });
+    };
+    cleanupExpiredChats();
+  }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = synthRef.current.getVoices();
+      const englishVoices = voices.filter(v => 
+        v.lang.includes('en') && !v.name.includes('compact')
+      );
+      setAvailableVoices(englishVoices);
+      console.log('📢 Available voices:', englishVoices.length);
+    };
+    
+    loadVoices();
+    
+    if (synthRef.current.onvoiceschanged !== undefined) {
+      synthRef.current.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-NG';
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setIsListening(false);
+        
+        if (handsFreeMode) {
+          setTimeout(() => sendMessage(transcript), 500);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      synthRef.current.cancel();
+    };
+  }, [handsFreeMode]);
+
+  const startListening = () => {
+    if (recognitionRef.current && !isListening) {
+      setIsListening(true);
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  // Enhanced speak function
+  const speak = (text) => {
+    if (!voiceEnabled) return;
+
+    synthRef.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = synthRef.current.getVoices();
+    
+    const preferredVoices = [
+      'Samantha',
+      'Alex',
+      'Google UK English Female',
+      'Google US English Female',
+      'Microsoft Zira Desktop',
+      'Microsoft David Desktop',
+      'Karen',
+      'Daniel',
+      'Moira',
+      'Tessa',
+    ];
+    
+    let selectedVoice = null;
+    
+    if (selectedVoiceName !== 'auto') {
+      selectedVoice = voices.find(v => v.name === selectedVoiceName);
+    }
+    
+    if (!selectedVoice) {
+      for (const preferred of preferredVoices) {
+        selectedVoice = voices.find(voice => voice.name.includes(preferred));
+        if (selectedVoice) break;
+      }
+    }
+    
+    if (!selectedVoice) {
+      selectedVoice = voices.find(voice => 
+        voice.lang.includes('en') && 
+        voice.localService === true &&
+        !voice.name.includes('compact')
+      );
+    }
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log('🎤 Using voice:', selectedVoice.name);
+    }
+    
+    utterance.lang = 'en-US';
+    utterance.rate = voiceRate;
+    utterance.pitch = voicePitch;
+    utterance.volume = 1.0;
+    
+    utterance.text = text
+      .replace(/\. /g, '... ')
+      .replace(/\? /g, '?.. ')
+      .replace(/! /g, '!.. ');
+    
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      console.log('🔊 Speaking started');
+    };
+    
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      console.log('✅ Speaking ended');
+      
+      if (handsFreeMode && !isLoading) {
+        setTimeout(() => startListening(), 1000);
+      }
+    };
+    
+    utterance.onerror = (event) => {
+      console.error('❌ Speech error:', event);
+      setIsSpeaking(false);
+    };
+    
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    synthRef.current.cancel();
+    setIsSpeaking(false);
+  };
+
+  const toggleHandsFreeMode = () => {
+    const newMode = !handsFreeMode;
+    setHandsFreeMode(newMode);
+    
+    if (newMode) {
+      setVoiceEnabled(true);
+      startListening();
+    } else {
+      stopListening();
+      stopSpeaking();
+    }
+  };
+
+  const sendMessage = async (voiceInput = null) => {
+    const messageText = voiceInput || input;
+    if (!messageText.trim() || isLoading) return;
+
+    const userMessage = {
+      role: 'user',
+      content: messageText,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const specialty = SPECIALTIES.find(s => s.id === selectedSpecialty);
+      
+      const nigerianContext = `
+      You are a health advisor for Nigerian patients. Consider:
+      - Common Nigerian diseases (malaria, typhoid, cholera)
+      - Local medications available in Nigeria
+      - Nigerian healthcare system context
+      - Tropical climate health concerns
+      - Affordable treatment options
+      - When to visit a Nigerian hospital or pharmacy
+      Keep responses CONCISE for voice output (2-3 sentences max when possible).
+      `;
+
+      const specialtyPrompts = {
+        general: `You are a General Health advisor for Nigeria. ${nigerianContext}`,
+        malaria: `You are a Malaria specialist for Nigeria. ${nigerianContext} Focus on malaria, typhoid, and tropical diseases.`,
+        maternal: `You are a Maternal Health specialist for Nigeria. ${nigerianContext} Focus on pregnancy and maternal care.`,
+        nutrition: `You are a Nutrition specialist for Nigeria. ${nigerianContext} Focus on local Nigerian foods.`,
+        child: `You are a Pediatric advisor for Nigeria. ${nigerianContext} Focus on child health.`,
+        mental: `You are a Mental Health counselor for Nigeria. ${nigerianContext} Be culturally sensitive.`
+      };
+      
+      const systemPrompt = specialtyPrompts[selectedSpecialty] + ` 
+      Always provide advice relevant to Nigerian context.
+      Keep responses SHORT and CLEAR for voice output.
+      If emergency, say "Please call 112 immediately" at the start.`;
+
+      const response = await fetch('http://localhost:3001/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 512,
+          system: systemPrompt,
+          messages: [
+            ...messages.filter(m => m.role === 'user' || m.role === 'assistant'),
+            userMessage,
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('❌ Backend error:', error);
+        throw new Error('Backend request failed');
+      }
+
+      const data = await response.json();
+
+      if (data.content && data.content[0]) {
+        const assistantMessage = {
+          role: 'assistant',
+          content: data.content[0].text,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        
+        if (voiceEnabled) {
+          speak(data.content[0].text);
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const clearCurrentChat = () => {
+    setMessages([]);
+    setInput('');
+    stopSpeaking();
+    localStorage.removeItem(`chat_${selectedSpecialty}`);
+    if (handsFreeMode) {
+      setHandsFreeMode(false);
+    }
+  };
+
+  return (
+    <div className="app">
+      <div className="container">
+        {/* Header */}
+        <div className="header">
+          <div className="header-content">
+            <Heart className="header-icon" />
+            <h1 className="header-title">🎤 Voice Health Advisor</h1>
+          </div>
+          <p className="header-subtitle">Your Nigerian health companion</p>
+        </div>
+
+        {/* Fun Animated Language Bar */}
+        <div style={{
+          background: 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%)',
+          backgroundSize: '200% 100%',
+          animation: 'gradientSlide 3s ease infinite',
+          padding: '12px 16px',
+          borderBottom: '2px solid #764ba2',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ 
+              fontSize: '16px',
+              animation: 'bounce 2s infinite'
+            }}>🗣️</span>
+            <span style={{ 
+              fontSize: '14px', 
+              color: 'white', 
+              fontWeight: '600',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>
+              Talk or Type with me in English or Pidgin! 
+            </span>
+            <span style={{ 
+              fontSize: '16px',
+              animation: 'bounce 2s infinite 0.5s'
+            }}>🇳🇬</span>
+          </div>
+        </div>
+
+        {/* Voice Controls Bar */}
+        <div style={{
+          background: handsFreeMode ? '#dcfce7' : '#f3f4f6',
+          padding: '16px',
+          borderBottom: '2px solid ' + (handsFreeMode ? '#22c55e' : '#e5e7eb'),
+          display: 'flex',
+          gap: '12px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={toggleHandsFreeMode}
+            style={{
+              padding: '10px 20px',
+              background: handsFreeMode ? '#22c55e' : '#667eea',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px'
+            }}
+          >
+            <Phone size={18} />
+            {handsFreeMode ? '🔴 End Call Mode' : '📞 Call Mode'}
+          </button>
+
+          <button
+            onClick={() => {
+              setVoiceEnabled(!voiceEnabled);
+              if (voiceEnabled) stopSpeaking();
+            }}
+            style={{
+              padding: '10px 20px',
+              background: voiceEnabled ? '#8b5cf6' : '#9ca3af',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px'
+            }}
+          >
+            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            Voice {voiceEnabled ? 'ON' : 'OFF'}
+          </button>
+
+          {isListening && (
+            <div style={{
+              padding: '10px 20px',
+              background: '#fee2e2',
+              color: '#dc2626',
+              borderRadius: '8px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              animation: 'pulse 1.5s infinite'
+            }}>
+              <Mic size={18} />
+              Listening...
+            </div>
+          )}
+
+          {isSpeaking && (
+            <div style={{
+              padding: '10px 20px',
+              background: '#dbeafe',
+              color: '#2563eb',
+              borderRadius: '8px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px'
+            }}>
+              <Volume2 size={18} />
+              Speaking...
+            </div>
+          )}
+        </div>
+
+        {/* Voice Settings Toggle Button */}
+        {voiceEnabled && (
+          <div style={{
+            background: '#f9fafb',
+            padding: '12px 16px',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+              style={{
+                padding: '8px 16px',
+                background: showVoiceSettings ? '#667eea' : 'white',
+                color: showVoiceSettings ? 'white' : '#667eea',
+                border: '2px solid #667eea',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+              }}
+            >
+              🎛️ {showVoiceSettings ? 'Hide Voice Settings' : 'Voice Settings'}
+            </button>
+          </div>
+        )}
+
+        {/* Voice Settings Panel */}
+        {voiceEnabled && showVoiceSettings && (
+          <div style={{
+            background: '#f9fafb',
+            padding: '16px',
+            borderBottom: '1px solid #e5e7eb',
+            animation: 'slideDown 0.3s ease-out'
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>
+                🎛️ Customize Voice
+              </h3>
+              
+              {availableVoices.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>
+                    Voice:
+                  </label>
+                  <select
+                    value={selectedVoiceName}
+                    onChange={(e) => setSelectedVoiceName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: '2px solid #e5e7eb',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="auto">🎙️ Auto (Best Available)</option>
+                    {availableVoices.map(voice => (
+                      <option key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <div>
+                <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>Speed:</span>
+                  <span style={{ fontWeight: '600' }}>{voiceRate.toFixed(2)}x</span>
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.05"
+                  value={voiceRate}
+                  onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  <span>Slower</span>
+                  <span>Normal</span>
+                  <span>Faster</span>
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>Pitch:</span>
+                  <span style={{ fontWeight: '600' }}>{voicePitch.toFixed(2)}</span>
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.05"
+                  value={voicePitch}
+                  onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  <span>Deeper</span>
+                  <span>Normal</span>
+                  <span>Higher</span>
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '6px' }}>
+                  Quick Presets:
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={() => { setVoiceRate(0.92); setVoicePitch(1.15); }}
+                    style={{ padding: '6px 12px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    👩 Warm Female
+                  </button>
+                  <button onClick={() => { setVoiceRate(0.90); setVoicePitch(0.85); }}
+                    style={{ padding: '6px 12px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    👨 Professional Male
+                  </button>
+                  <button onClick={() => { setVoiceRate(0.95); setVoicePitch(1.0); }}
+                    style={{ padding: '6px 12px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    🎯 Clear & Neutral
+                  </button>
+                  <button onClick={() => { setVoiceRate(1.05); setVoicePitch(1.25); }}
+                    style={{ padding: '6px 12px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    😊 Friendly & Upbeat
+                  </button>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => speak("Hello! This is how I sound with your current settings.")}
+                style={{
+                  padding: '8px 16px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  marginTop: '4px'
+                }}
+              >
+                🔊 Test Voice
+              </button>
+              
+              <button
+                onClick={() => {
+                  setVoiceRate(0.92);
+                  setVoicePitch(1.12);
+                  setSelectedVoiceName('auto');
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                ↺ Reset to Default
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Emergency Banner */}
+        <div style={{
+          background: '#fee2e2',
+          padding: '12px 16px',
+          borderBottom: '2px solid #ef4444',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Phone size={16} color="#dc2626" />
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
+              Emergency? Call 112 | NCDC: 0800-9700-0010
+            </span>
+          </div>
+          <button
+            onClick={() => setShowEmergency(!showEmergency)}
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            {showEmergency ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        {showEmergency && (
+          <div style={{
+            background: '#fef2f2',
+            padding: '16px',
+            borderBottom: '1px solid #fecaca',
+            fontSize: '14px'
+          }}>
+            <div><strong>Lagos:</strong> {EMERGENCY_CONTACTS.Lagos.emergency}</div>
+            <div><strong>Abuja:</strong> {EMERGENCY_CONTACTS.Abuja.emergency}</div>
+            <div><strong>NCDC:</strong> {EMERGENCY_CONTACTS.General.ncdc}</div>
+          </div>
+        )}
+
+        {/* Specialty Selector - Saves chat per specialty */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '8px',
+          padding: '12px',
+          background: '#f9fafb',
+          borderBottom: '2px solid #e5e7eb',
+          overflowX: 'visible'
+        }}>
+          {SPECIALTIES.map((specialty) => (
+            <button
+              key={specialty.id}
+              onClick={() => {
+                setSelectedSpecialty(specialty.id);
+                // Chat will auto-load from localStorage in useEffect
+              }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '12px 8px',
+                border: selectedSpecialty === specialty.id ? '2px solid #667eea' : '2px solid #e5e7eb',
+                background: selectedSpecialty === specialty.id 
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                  : 'white',
+                color: selectedSpecialty === specialty.id ? 'white' : '#374151',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                fontSize: '12px',
+                fontWeight: '600',
+                minHeight: '70px'
+              }}
+            >
+              <span style={{ fontSize: '24px' }}>{specialty.icon}</span>
+              <span style={{ 
+                fontSize: '11px', 
+                textAlign: 'center',
+                lineHeight: '1.2',
+                wordBreak: 'break-word'
+              }}>
+                {specialty.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Chat Area */}
+        <div className="chat-container">
+          {messages.length === 0 ? (
+            <div className="welcome-message">
+              <Bot size={48} className="welcome-icon" />
+              <h2 className="welcome-title">
+                {handsFreeMode ? '📞 I dey listen...' : '🎤 Speak or Type Your Question'}
+              </h2>
+              <p className="welcome-text">
+                {handsFreeMode 
+                  ? 'Just talk! I go respond with voice automatically.'
+                  : 'Click the microphone or type your health question!'}
+              </p>
+
+              {/* FAQ Toggle Button */}
+              <div style={{
+                marginTop: '24px',
+                width: '100%',
+                maxWidth: '100%',
+                padding: '0 10px'
+              }}>
+                <button
+                  onClick={() => setShowFAQ(!showFAQ)}
+                  style={{
+                    width: '100%',
+                    maxWidth: '500px',
+                    margin: '0 auto',
+                    padding: '14px 20px',
+                    background: showFAQ ? '#667eea' : 'white',
+                    color: showFAQ ? 'white' : '#667eea',
+                    border: '2px solid #667eea',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    transition: 'all 0.2s',
+                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showFAQ) {
+                      e.currentTarget.style.background = '#f3f4f6';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showFAQ) {
+                      e.currentTarget.style.background = 'white';
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '22px' }}>💬</span>
+                  <span>{showFAQ ? '🔽 Hide Quick Questions' : '▶️ Show Quick Questions'}</span>
+                </button>
+
+                {/* FAQ Quick Questions - Collapsible */}
+                {showFAQ && (
+                  <div style={{
+                    marginTop: '16px',
+                    animation: 'slideDown 0.3s ease-out'
+                  }}>
+                    <h3 style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '12px',
+                      textAlign: 'center'
+                    }}>
+                      Popular Health Questions:
+                    </h3>
+                    
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(2, 1fr)',
+                      gap: '8px',
+                      maxWidth: '500px',
+                      margin: '0 auto'
+                    }}>
+                      {FAQ_QUESTIONS.map((faq, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setInput(faq.query);
+                            sendMessage(faq.query);
+                            setShowFAQ(false);
+                          }}
+                          style={{
+                            padding: '12px',
+                            background: 'white',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: '#374151',
+                            minHeight: '60px',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                            e.currentTarget.style.borderColor = '#667eea';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.borderColor = '#e5e7eb';
+                          }}
+                        >
+                          <span style={{ fontSize: '28px', flexShrink: 0 }}>{faq.icon}</span>
+                          <span style={{ lineHeight: '1.3', flex: 1 }}>{faq.text}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <p style={{
+                      fontSize: '12px',
+                      color: '#9ca3af',
+                      marginTop: '16px',
+                      textAlign: 'center'
+                    }}>
+                      👆 Tap a question above or type your own below!
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="messages">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`message ${
+                    message.role === 'user' ? 'message-user' : 'message-assistant'
+                  }`}
+                >
+                  <div className="message-icon">
+                    {message.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+                  </div>
+                  <div className="message-content">
+                    {message.content}
+                    {message.role === 'assistant' && voiceEnabled && (
+                      <button
+                        onClick={() => speak(message.content)}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 12px',
+                          background: '#8b5cf6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Volume2 size={14} />
+                        Play Again
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="message message-assistant">
+                  <div className="message-icon">
+                    <Bot size={20} />
+                  </div>
+                  <div className="message-content">
+                    <Loader2 className="loading-spinner" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* New Chat Button - Only show when there are messages */}
+        {messages.length > 0 && (
+          <div style={{
+            padding: '12px 16px',
+            background: '#f9fafb',
+            borderTop: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '12px'
+          }}>
+            <button
+              onClick={clearCurrentChat}
+              style={{
+                padding: '10px 20px',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#5568d3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#667eea';
+              }}
+            >
+              ↺ Clear Chat
+            </button>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="input-container">
+          <button
+            onClick={isListening ? stopListening : startListening}
+            disabled={isLoading || handsFreeMode}
+            style={{
+              padding: '12px',
+              background: isListening ? '#ef4444' : '#22c55e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              cursor: handsFreeMode ? 'not-allowed' : 'pointer',
+              opacity: handsFreeMode ? 0.5 : 1
+            }}
+          >
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
+
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={isListening ? "Listening..." : "Type or speak your question..."}
+            className="input-textarea"
+            rows={1}
+            disabled={isLoading || isListening}
+          />
+          
+          <button
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || isLoading}
+            className="send-button"
+          >
+            <Send size={20} />
+          </button>
+        </div>
+
+        {/* Disclaimer */}
+        <div className="disclaimer">
+          <p>
+            ⚠️ AI assistant. Always consult healthcare professionals for medical advice. Emergency? Call 112!
+          </p>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes gradientSlide {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default VoiceHealthAdvisor;
