@@ -333,7 +333,7 @@ function VoiceHealthAdvisor() {
       Keep responses SHORT and CLEAR for voice output.
       If emergency, say "Please call 112 immediately" at the start.`;
 
-      const response = await fetch('http://localhost:3001/api/chat', {
+      const response = await fetch('https://nigerian-health-backend.onrender.com/api/chat', {', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
