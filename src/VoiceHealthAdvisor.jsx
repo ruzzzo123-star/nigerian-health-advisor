@@ -1,14 +1,80 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone, WifiOff, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone, WifiOff, RefreshCw, Settings, X } from 'lucide-react';
 import './App.css';
 
 const SPECIALTIES = [
-  { id: 'general', name: 'General Health', icon: '🏥', color: 'bg-blue-500' },
-  { id: 'malaria', name: 'Malaria & Typhoid', icon: '🦟', color: 'bg-orange-500' },
-  { id: 'maternal', name: 'Maternal Health', icon: '🤰', color: 'bg-pink-500' },
-  { id: 'nutrition', name: 'Nutrition', icon: '🥗', color: 'bg-green-500' },
-  { id: 'child', name: 'Child Health', icon: '👶', color: 'bg-yellow-500' },
-  { id: 'mental', name: 'Mental Health', icon: '🧠', color: 'bg-purple-500' },
+  { 
+    id: 'general', 
+    name: 'General Health', 
+    icon: '🏥', 
+    color: 'bg-blue-500',
+    quickQuestions: [
+      { icon: '🤒', text: 'Treat fever?', query: 'How do I treat high fever at home?' },
+      { icon: '🤕', text: 'Headache relief?', query: 'What helps with severe headaches?' },
+      { icon: '🤧', text: 'Common cold?', query: 'How to treat common cold?' },
+      { icon: '💊', text: 'Pain relief?', query: 'What painkillers are safe in Nigeria?' },
+    ]
+  },
+  { 
+    id: 'malaria', 
+    name: 'Malaria & Typhoid', 
+    icon: '🦟', 
+    color: 'bg-orange-500',
+    quickQuestions: [
+      { icon: '🦟', text: 'Malaria symptoms?', query: 'What are malaria symptoms?' },
+      { icon: '💊', text: 'Best treatment?', query: 'Best malaria medication in Nigeria?' },
+      { icon: '🤒', text: 'Typhoid signs?', query: 'How do I know if I have typhoid?' },
+      { icon: '🛡️', text: 'Prevention?', query: 'How to prevent malaria and typhoid?' },
+    ]
+  },
+  { 
+    id: 'maternal', 
+    name: 'Maternal Health', 
+    icon: '🤰', 
+    color: 'bg-pink-500',
+    quickQuestions: [
+      { icon: '🤰', text: 'Pregnancy diet?', query: 'What should I eat during pregnancy in Nigeria?' },
+      { icon: '🏥', text: 'Antenatal care?', query: 'Where can I get free antenatal care?' },
+      { icon: '💊', text: 'Safe medications?', query: 'What medicines are safe while pregnant?' },
+      { icon: '👶', text: 'Warning signs?', query: 'What pregnancy symptoms need urgent care?' },
+    ]
+  },
+  { 
+    id: 'nutrition', 
+    name: 'Nutrition', 
+    icon: '🥗', 
+    color: 'bg-green-500',
+    quickQuestions: [
+      { icon: '🍎', text: 'Healthy Nigerian foods?', query: 'What are healthy Nigerian foods?' },
+      { icon: '💪', text: 'Weight loss tips?', query: 'How can I lose weight eating Nigerian food?' },
+      { icon: '🥛', text: 'Vitamin sources?', query: 'Where to get vitamins from Nigerian foods?' },
+      { icon: '👶', text: 'Baby nutrition?', query: 'Best foods for babies in Nigeria?' },
+    ]
+  },
+  { 
+    id: 'child', 
+    name: 'Child Health', 
+    icon: '👶', 
+    color: 'bg-yellow-500',
+    quickQuestions: [
+      { icon: '💉', text: 'Vaccination schedule?', query: 'What vaccines does my child need?' },
+      { icon: '🤒', text: 'Treat child fever?', query: 'How to treat fever in children?' },
+      { icon: '🍼', text: 'Feeding problems?', query: 'My child won\'t eat, what should I do?' },
+      { icon: '⚠️', text: 'Warning signs?', query: 'When should I take my child to hospital?' },
+    ]
+  },
+  { 
+    id: 'mental', 
+    name: 'Mental Health', 
+    icon: '🧠', 
+    color: 'bg-purple-500',
+    quickQuestions: [
+      { icon: '😢', text: 'Feeling depressed?', query: 'How do I deal with depression in Nigeria?' },
+      { icon: '😰', text: 'Anxiety help?', query: 'How to manage anxiety and stress?' },
+      { icon: '😴', text: 'Sleep problems?', query: 'I can\'t sleep well, what should I do?' },
+      { icon: '🆘', text: 'Get mental health help?', query: 'Where can I get mental health support in Nigeria?' },
+    ]
+  },
 ];
 
 const EMERGENCY_CONTACTS = {
@@ -16,21 +82,6 @@ const EMERGENCY_CONTACTS = {
   'Abuja': { emergency: '112', ambulance: '08037245625' },
   'General': { emergency: '112', ncdc: '0800-9700-0010' }
 };
-
-const FAQ_QUESTIONS = [
-  { icon: '🦟', text: 'Treat malaria?', query: 'How can I treat malaria in Nigeria?' },
-  { icon: '🤒', text: 'Typhoid symptoms?', query: 'What are the symptoms of typhoid fever?' },
-  { icon: '🤧', text: 'Common cold?', query: 'How do I treat common cold and flu?' },
-  { icon: '🏥', text: 'Find hospital?', query: 'How do I find the nearest hospital in Nigeria?' },
-  { icon: '💊', text: 'Buy medicines?', query: 'Where can I buy affordable medications in Nigeria?' },
-  { icon: '🆘', text: 'Emergency help?', query: 'What are the emergency numbers in Nigeria?' },
-  { icon: '🤰', text: 'Pregnancy care?', query: 'What are important pregnancy care tips in Nigeria?' },
-  { icon: '👶', text: 'Baby vaccines?', query: 'What vaccines does my baby need in Nigeria?' },
-  { icon: '🩺', text: 'High BP?', query: 'How do I manage high blood pressure in Nigeria?' },
-  { icon: '🤕', text: 'Headache relief?', query: 'How can I treat severe headaches?' },
-  { icon: '🌡️', text: 'High fever?', query: 'What should I do if I have high fever?' },
-  { icon: '💉', text: 'Adult vaccines?', query: 'What vaccines do adults need in Nigeria?' },
-];
 
 const saveToLocalStorage = (key, data) => {
   const item = {
@@ -66,7 +117,7 @@ function VoiceHealthAdvisor() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState('general');
   const [showEmergency, setShowEmergency] = useState(false);
-  const [showFAQ, setShowFAQ] = useState(false);
+  const [showSpecialtyQuestions, setShowSpecialtyQuestions] = useState(false);
   const [error, setError] = useState(null);
   const [lastFailedMessage, setLastFailedMessage] = useState(null);
   
@@ -78,7 +129,9 @@ function VoiceHealthAdvisor() {
   const [voicePitch, setVoicePitch] = useState(1.12);
   const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
   const [availableVoices, setAvailableVoices] = useState([]);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  
+  // Settings menu
+  const [showSettings, setShowSettings] = useState(false);
   
   // Location state
   const [userLocation, setUserLocation] = useState(null);
@@ -465,6 +518,8 @@ function VoiceHealthAdvisor() {
     localStorage.removeItem(`chat_${selectedSpecialty}`);
   };
 
+  const currentSpecialty = SPECIALTIES.find(s => s.id === selectedSpecialty);
+
   return (
     <div className="app">
       <div className="container">
@@ -472,9 +527,315 @@ function VoiceHealthAdvisor() {
           <div className="header-content">
             <Heart className="header-icon" />
             <h1 className="header-title">🎤 Voice Health Advisor</h1>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <Settings size={24} />
+            </button>
           </div>
           <p className="header-subtitle">Your Nigerian health companion</p>
         </div>
+
+        {/* Settings Menu Overlay */}
+        {showSettings && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            padding: '20px',
+            overflowY: 'auto'
+          }}
+          onClick={() => setShowSettings(false)}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '16px',
+                maxWidth: '500px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                animation: 'slideDown 0.3s ease-out'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Settings Header */}
+              <div style={{
+                padding: '20px',
+                borderBottom: '2px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '16px 16px 0 0'
+              }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'white', margin: 0 }}>
+                  ⚙️ Settings
+                </h2>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Settings Content */}
+              <div style={{ padding: '20px' }}>
+                
+                {/* Location Settings */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                    📍 Location
+                  </h3>
+                  <div style={{
+                    background: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '2px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Enable Location</span>
+                      <button
+                        onClick={() => setLocationEnabled(!locationEnabled)}
+                        style={{
+                          padding: '6px 16px',
+                          background: locationEnabled ? '#22c55e' : '#9ca3af',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {locationEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    {detectedCity && locationEnabled && (
+                      <div style={{ fontSize: '12px', color: '#15803d', marginTop: '8px' }}>
+                        📍 Detected: {detectedCity}, Nigeria
+                      </div>
+                    )}
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                      Get personalized emergency numbers and local health advice
+                    </div>
+                  </div>
+                </div>
+
+                {/* Voice Settings */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                    🔊 Voice
+                  </h3>
+                  <div style={{
+                    background: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '2px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Voice Responses</span>
+                      <button
+                        onClick={() => {
+                          setVoiceEnabled(!voiceEnabled);
+                          if (voiceEnabled) stopSpeaking();
+                        }}
+                        style={{
+                          padding: '6px 16px',
+                          background: voiceEnabled ? '#8b5cf6' : '#9ca3af',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {voiceEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    
+                    {voiceEnabled && (
+                      <>
+                        <div style={{ marginTop: '16px' }}>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span>Speed:</span>
+                            <span style={{ fontWeight: '600' }}>{voiceRate.toFixed(2)}x</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="1.5"
+                            step="0.05"
+                            value={voiceRate}
+                            onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
+                            style={{ width: '100%', cursor: 'pointer' }}
+                          />
+                        </div>
+                        
+                        <div style={{ marginTop: '12px' }}>
+                          <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span>Pitch:</span>
+                            <span style={{ fontWeight: '600' }}>{voicePitch.toFixed(2)}</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="2.0"
+                            step="0.05"
+                            value={voicePitch}
+                            onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
+                            style={{ width: '100%', cursor: 'pointer' }}
+                          />
+                        </div>
+                        
+                        <button
+                          onClick={() => speak("Hello! This is how I sound.")}
+                          style={{
+                            marginTop: '12px',
+                            padding: '8px 16px',
+                            background: '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            width: '100%'
+                          }}
+                        >
+                          🔊 Test Voice
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Share App */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                    🌟 Share App
+                  </h3>
+                  <div style={{
+                    background: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '2px solid #e5e7eb'
+                  }}>
+                    <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
+                      Help others access free health advice!
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => shareToWhatsApp('Check out Nigerian Health Advisor! Free health advice: https://naija-health-advisor.vercel.app')}
+                        style={{
+                          flex: 1,
+                          minWidth: '120px',
+                          padding: '10px 16px',
+                          background: '#25D366',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <span>💬</span>
+                        WhatsApp
+                      </button>
+                      <button
+                        onClick={(e) => copyToClipboard('https://naija-health-advisor.vercel.app', e)}
+                        style={{
+                          flex: 1,
+                          minWidth: '120px',
+                          padding: '10px 16px',
+                          background: '#6B7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <span>🔗</span>
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* About */}
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                    ℹ️ About
+                  </h3>
+                  <div style={{
+                    background: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '2px solid #e5e7eb',
+                    fontSize: '13px',
+                    color: '#6b7280',
+                    lineHeight: '1.6'
+                  }}>
+                    <p style={{ margin: '0 0 8px 0' }}>
+                      <strong style={{ color: '#374151' }}>Nigerian Health Advisor</strong>
+                    </p>
+                    <p style={{ margin: '0 0 8px 0' }}>
+                      Free AI-powered health advice for Nigerians. Get instant answers in English or Pidgin.
+                    </p>
+                    <p style={{ margin: '0', fontSize: '11px' }}>
+                      Version 2.0 • Built with ❤️ for Nigeria
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{
           background: 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%)',
@@ -512,51 +873,6 @@ function VoiceHealthAdvisor() {
           </div>
         </div>
 
-        {/* Compact Controls - Location Only */}
-        <div style={{
-          background: '#f9fafb',
-          padding: '10px 16px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          gap: '8px',
-          justifyContent: 'center',
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={() => setLocationEnabled(!locationEnabled)}
-            style={{
-              padding: '8px 16px',
-              background: locationEnabled ? '#22c55e' : 'white',
-              color: locationEnabled ? 'white' : '#374151',
-              border: '2px solid ' + (locationEnabled ? '#22c55e' : '#e5e7eb'),
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              minHeight: '36px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <span style={{ fontSize: '14px' }}>📍</span>
-            <span>{locationEnabled ? 'Location ON' : 'Location OFF'}</span>
-          </button>
-
-          {!locationEnabled && (
-            <span style={{
-              fontSize: '11px',
-              color: '#6b7280',
-              maxWidth: '300px'
-            }}>
-              Enable for personalized emergency numbers
-            </span>
-          )}
-        </div>
-
-        {/* Location Info Badge */}
         {detectedCity && locationEnabled && (
           <div style={{
             background: '#f0fdf4',
@@ -615,191 +931,6 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
-        {voiceEnabled && (
-          <div style={{
-            background: '#f9fafb',
-            padding: '12px 16px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'center'
-          }}>
-            <button
-              onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-              style={{
-                padding: '10px 20px',
-                background: showVoiceSettings ? '#667eea' : 'white',
-                color: showVoiceSettings ? 'white' : '#667eea',
-                border: '2px solid #667eea',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s',
-                minHeight: '44px'
-              }}
-            >
-              🎛️ {showVoiceSettings ? 'Hide Voice Settings' : 'Voice Settings'}
-            </button>
-          </div>
-        )}
-
-        {voiceEnabled && showVoiceSettings && (
-          <div style={{
-            background: '#f9fafb',
-            padding: '16px',
-            borderBottom: '1px solid #e5e7eb',
-            animation: 'slideDown 0.3s ease-out'
-          }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              maxWidth: '600px',
-              margin: '0 auto'
-            }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>
-                🎛️ Customize Voice
-              </h3>
-              
-              {availableVoices.length > 0 && (
-                <div>
-                  <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>
-                    Voice:
-                  </label>
-                  <select
-                    value={selectedVoiceName}
-                    onChange={(e) => setSelectedVoiceName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      minHeight: '44px'
-                    }}
-                  >
-                    <option value="auto">🎙️ Auto (Best Available)</option>
-                    {availableVoices.map(voice => (
-                      <option key={voice.name} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Speed:</span>
-                  <span style={{ fontWeight: '600' }}>{voiceRate.toFixed(2)}x</span>
-                </label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="1.5"
-                  step="0.05"
-                  value={voiceRate}
-                  onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                  <span>Slower</span>
-                  <span>Normal</span>
-                  <span>Faster</span>
-                </div>
-              </div>
-              
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Pitch:</span>
-                  <span style={{ fontWeight: '600' }}>{voicePitch.toFixed(2)}</span>
-                </label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.05"
-                  value={voicePitch}
-                  onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                  <span>Deeper</span>
-                  <span>Normal</span>
-                  <span>Higher</span>
-                </div>
-              </div>
-              
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '6px' }}>
-                  Quick Presets:
-                </label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button onClick={() => { setVoiceRate(0.92); setVoicePitch(1.15); }}
-                    style={{ padding: '8px 14px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
-                    👩 Warm Female
-                  </button>
-                  <button onClick={() => { setVoiceRate(0.90); setVoicePitch(0.85); }}
-                    style={{ padding: '8px 14px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
-                    👨 Professional Male
-                  </button>
-                  <button onClick={() => { setVoiceRate(0.95); setVoicePitch(1.0); }}
-                    style={{ padding: '8px 14px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
-                    🎯 Clear & Neutral
-                  </button>
-                  <button onClick={() => { setVoiceRate(1.05); setVoicePitch(1.25); }}
-                    style={{ padding: '8px 14px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
-                    😊 Friendly & Upbeat
-                  </button>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => speak("Hello! This is how I sound with your current settings.")}
-                style={{
-                  padding: '10px 18px',
-                  background: '#667eea',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  marginTop: '4px',
-                  minHeight: '44px'
-                }}
-              >
-                🔊 Test Voice
-              </button>
-              
-              <button
-                onClick={() => {
-                  setVoiceRate(0.92);
-                  setVoicePitch(1.12);
-                  setSelectedVoiceName('auto');
-                }}
-                style={{
-                  padding: '8px 14px',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  minHeight: '40px'
-                }}
-              >
-                ↺ Reset to Default
-              </button>
-            </div>
-          </div>
-        )}
-
         <div style={{
           background: '#fee2e2',
           padding: '12px 16px',
@@ -817,11 +948,11 @@ function VoiceHealthAdvisor() {
                 const cityName = detectedCity?.toLowerCase() || '';
                 
                 if (cityName.includes('lagos')) {
-                  return 'Emergency? Lagos: 767 / 112 | Ambulance: 08023147654';
+                  return 'Emergency? Lagos: 767 / 112';
                 } else if (cityName.includes('abuja')) {
-                  return 'Emergency? Abuja: 112 | Ambulance: 08037245625';
+                  return 'Emergency? Abuja: 112';
                 } else {
-                  return 'Emergency? Call 112 | NCDC: 0800-9700-0010';
+                  return 'Emergency? Call 112';
                 }
               })()}
             </span>
@@ -836,10 +967,10 @@ function VoiceHealthAdvisor() {
               borderRadius: '6px',
               fontSize: '13px',
               cursor: 'pointer',
-              minHeight: '40px'
+              minHeight: '36px'
             }}
           >
-            {showEmergency ? 'Hide' : 'Show'}
+            {showEmergency ? 'Hide' : 'More'}
           </button>
         </div>
 
@@ -848,7 +979,8 @@ function VoiceHealthAdvisor() {
             background: '#fef2f2',
             padding: '16px',
             borderBottom: '1px solid #fecaca',
-            fontSize: '14px'
+            fontSize: '13px',
+            animation: 'slideDown 0.3s ease-out'
           }}>
             {(() => {
               const cityName = detectedCity?.toLowerCase() || '';
@@ -856,17 +988,16 @@ function VoiceHealthAdvisor() {
               if (cityName.includes('lagos')) {
                 return (
                   <>
-                    <div><strong>📍 Lagos Emergency Numbers:</strong></div>
+                    <div><strong>📍 Lagos:</strong></div>
                     <div>Emergency: 767 / 112</div>
                     <div>Ambulance: 08023147654</div>
-                    <div>LASEMA: 767</div>
                     <div>NCDC: 0800-9700-0010</div>
                   </>
                 );
               } else if (cityName.includes('abuja')) {
                 return (
                   <>
-                    <div><strong>📍 Abuja Emergency Numbers:</strong></div>
+                    <div><strong>📍 Abuja:</strong></div>
                     <div>Emergency: 112</div>
                     <div>Ambulance: 08037245625</div>
                     <div>NCDC: 0800-9700-0010</div>
@@ -875,11 +1006,9 @@ function VoiceHealthAdvisor() {
               } else {
                 return (
                   <>
-                    <div><strong>📍 Nigeria Emergency Numbers:</strong></div>
-                    <div>Emergency: 112 (National)</div>
+                    <div><strong>📍 Nigeria:</strong></div>
+                    <div>Emergency: 112</div>
                     <div>NCDC: 0800-9700-0010</div>
-                    <div>Lagos: 767</div>
-                    <div>For your city-specific numbers, search "{detectedCity || 'your city'} emergency numbers"</div>
                   </>
                 );
               }
@@ -887,45 +1016,46 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
+        {/* Compact Specialty Grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '10px',
-          padding: '14px',
+          gap: '8px',
+          padding: '12px',
           background: '#f9fafb',
-          borderBottom: '2px solid #e5e7eb',
-          overflowX: 'visible'
+          borderBottom: '2px solid #e5e7eb'
         }}>
           {SPECIALTIES.map((specialty) => (
             <button
               key={specialty.id}
               onClick={() => {
                 setSelectedSpecialty(specialty.id);
+                setShowSpecialtyQuestions(false);
               }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '14px 10px',
+                gap: '4px',
+                padding: '10px 8px',
                 border: selectedSpecialty === specialty.id ? '2px solid #667eea' : '2px solid #e5e7eb',
                 background: selectedSpecialty === specialty.id 
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
                   : 'white',
                 color: selectedSpecialty === specialty.id ? 'white' : '#374151',
-                borderRadius: '12px',
+                borderRadius: '10px',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                fontSize: '13px',
+                transition: 'all 0.2s ease',
+                fontSize: '11px',
                 fontWeight: '600',
-                minHeight: '80px'
+                minHeight: '70px'
               }}
             >
-              <span style={{ fontSize: '28px' }}>{specialty.icon}</span>
+              <span style={{ fontSize: '24px' }}>{specialty.icon}</span>
               <span style={{ 
-                fontSize: '12px', 
+                fontSize: '11px', 
                 textAlign: 'center',
-                lineHeight: '1.3',
+                lineHeight: '1.2',
                 wordBreak: 'break-word'
               }}>
                 {specialty.name}
@@ -934,135 +1064,96 @@ function VoiceHealthAdvisor() {
           ))}
         </div>
 
+        {/* Quick Questions for Selected Specialty */}
+        {currentSpecialty && (
+          <div style={{
+            background: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <button
+              onClick={() => setShowSpecialtyQuestions(!showSpecialtyQuestions)}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#667eea'
+              }}
+            >
+              <span>{currentSpecialty.icon}</span>
+              <span>{showSpecialtyQuestions ? 'Hide' : 'Show'} {currentSpecialty.name} Questions</span>
+              <span style={{ fontSize: '10px' }}>{showSpecialtyQuestions ? '▲' : '▼'}</span>
+            </button>
+            
+            {showSpecialtyQuestions && (
+              <div style={{
+                padding: '0 12px 12px 12px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '8px',
+                animation: 'slideDown 0.3s ease-out'
+              }}>
+                {currentSpecialty.quickQuestions.map((q, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setInput(q.query);
+                      sendMessage(q.query);
+                      setShowSpecialtyQuestions(false);
+                    }}
+                    style={{
+                      padding: '10px',
+                      background: 'white',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      textAlign: 'left',
+                      minHeight: '60px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)';
+                      e.currentTarget.style.borderColor = '#667eea';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                    }}
+                  >
+                    <span style={{ fontSize: '24px', flexShrink: 0 }}>{q.icon}</span>
+                    <span style={{ lineHeight: '1.3', flex: 1 }}>{q.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="chat-container">
           {messages.length === 0 ? (
             <div className="welcome-message">
               <Bot size={48} className="welcome-icon" />
               <h2 className="welcome-title">
-                🎤 Speak or Type Your Question
+                {currentSpecialty.icon} {currentSpecialty.name}
               </h2>
               <p className="welcome-text">
-                Click the microphone or type your health question!
+                Click above to see quick questions or type your own!
               </p>
-
-              <div style={{
-                marginTop: '24px',
-                width: '100%',
-                maxWidth: '100%',
-                padding: '0 10px'
-              }}>
-                <button
-                  onClick={() => setShowFAQ(!showFAQ)}
-                  style={{
-                    width: '100%',
-                    maxWidth: '500px',
-                    margin: '0 auto',
-                    padding: '16px 24px',
-                    background: showFAQ ? '#667eea' : 'white',
-                    color: showFAQ ? 'white' : '#667eea',
-                    border: '2px solid #667eea',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    transition: 'all 0.2s',
-                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
-                    minHeight: '56px'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!showFAQ) {
-                      e.currentTarget.style.background = '#f3f4f6';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showFAQ) {
-                      e.currentTarget.style.background = 'white';
-                    }
-                  }}
-                >
-                  <span style={{ fontSize: '24px' }}>💬</span>
-                  <span>{showFAQ ? '🔽 Hide Quick Questions' : '▶️ Show Quick Questions'}</span>
-                </button>
-
-                {showFAQ && (
-                  <div style={{
-                    marginTop: '16px',
-                    animation: 'slideDown 0.3s ease-out'
-                  }}>
-                    <h3 style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '14px',
-                      textAlign: 'center'
-                    }}>
-                      Popular Health Questions:
-                    </h3>
-                    
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(2, 1fr)',
-                      gap: '10px',
-                      maxWidth: '500px',
-                      margin: '0 auto'
-                    }}>
-                      {FAQ_QUESTIONS.map((faq, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setInput(faq.query);
-                            sendMessage(faq.query);
-                            setShowFAQ(false);
-                          }}
-                          style={{
-                            padding: '14px',
-                            background: 'white',
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: '12px',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            color: '#374151',
-                            minHeight: '68px',
-                            textAlign: 'left'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-                            e.currentTarget.style.borderColor = '#667eea';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.borderColor = '#e5e7eb';
-                          }}
-                        >
-                          <span style={{ fontSize: '32px', flexShrink: 0 }}>{faq.icon}</span>
-                          <span style={{ lineHeight: '1.4', flex: 1 }}>{faq.text}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <p style={{
-                      fontSize: '13px',
-                      color: '#9ca3af',
-                      marginTop: '18px',
-                      textAlign: 'center'
-                    }}>
-                      👆 Tap a question above or type your own below!
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           ) : (
             <div className="messages">
@@ -1079,97 +1170,75 @@ function VoiceHealthAdvisor() {
                   <div className="message-content">
                     {message.content}
                     
-                    {/* Action Buttons for Assistant Messages */}
                     {message.role === 'assistant' && (
                       <div style={{
                         display: 'flex',
-                        gap: '8px',
-                        marginTop: '12px',
+                        gap: '6px',
+                        marginTop: '10px',
                         flexWrap: 'wrap'
                       }}>
                         {voiceEnabled && (
                           <button
                             onClick={() => speak(message.content)}
                             style={{
-                              padding: '6px 14px',
+                              padding: '6px 12px',
                               background: '#8b5cf6',
                               color: 'white',
                               border: 'none',
                               borderRadius: '6px',
-                              fontSize: '13px',
+                              fontSize: '12px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '6px',
-                              minHeight: '36px',
+                              gap: '4px',
+                              minHeight: '32px',
                               fontWeight: '600'
                             }}
                           >
-                            <Volume2 size={16} />
-                            Play Again
+                            <Volume2 size={14} />
+                            Play
                           </button>
                         )}
                         
                         <button
                           onClick={() => shareToWhatsApp(message.content)}
                           style={{
-                            padding: '6px 14px',
+                            padding: '6px 12px',
                             background: '#25D366',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '13px',
+                            fontSize: '12px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            minHeight: '36px',
+                            gap: '4px',
+                            minHeight: '32px',
                             fontWeight: '600'
                           }}
                         >
-                          <span style={{ fontSize: '16px' }}>💬</span>
-                          WhatsApp
-                        </button>
-                        
-                        <button
-                          onClick={() => shareToSMS(message.content)}
-                          style={{
-                            padding: '6px 14px',
-                            background: '#0EA5E9',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            minHeight: '36px',
-                            fontWeight: '600'
-                          }}
-                        >
-                          <span style={{ fontSize: '16px' }}>💬</span>
-                          SMS
+                          <span style={{ fontSize: '14px' }}>💬</span>
+                          Share
                         </button>
                         
                         <button
                           onClick={(e) => copyToClipboard(message.content, e)}
                           style={{
-                            padding: '6px 14px',
+                            padding: '6px 12px',
                             background: '#6B7280',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '13px',
+                            fontSize: '12px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            minHeight: '36px',
+                            gap: '4px',
+                            minHeight: '32px',
                             fontWeight: '600'
                           }}
                         >
-                          <span style={{ fontSize: '16px' }}>📋</span>
+                          <span style={{ fontSize: '14px' }}>📋</span>
                           Copy
                         </button>
                       </div>
@@ -1193,59 +1262,20 @@ function VoiceHealthAdvisor() {
                         animation: 'spin 1s linear infinite'
                       }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '500' }}>
                           {(() => {
-                            const healthTips = [
+                            const messages = [
                               '💡 Drink 8 glasses of water daily',
                               '🦟 Sleep under a mosquito net',
-                              '🏥 Keep emergency numbers saved',
+                              '🇳🇬 Abeg wait small, I dey check am',
                               '💊 Always complete your medication',
                               '🧼 Wash your hands frequently',
-                              '🌡️ Check your temperature regularly',
-                              '🍎 Eat fruits and vegetables daily',
-                              '😴 Get 7-8 hours of sleep',
-                              '🚶 Exercise for 30 minutes daily',
-                              '📞 Call 112 for emergencies',
-                              '💉 Stay up to date with vaccines',
-                              '🥤 Avoid sugary drinks',
-                              '🍲 Eat balanced Nigerian meals',
-                              '🌞 Get some sunlight every day',
-                              '🧘 Take time to rest and relax'
-                            ];
-
-                            const nigerianPidgin = [
-                              '🇳🇬 Abeg wait small, I dey check am',
                               '🔍 Make I check wetin fit help you',
+                              '🍎 Eat fruits and vegetables daily',
                               '⏳ I dey find answer for you now',
-                              '🤔 One moment, I dey think am',
-                              '💭 I dey reason the matter well well',
-                              '🧠 Make I use my brain check am',
-                              '📚 I dey look for better answer',
-                              '✨ E go clear for you now now',
-                              '🎯 I wan give you correct answer',
-                              '💪 Make I find the best advice',
-                              '🙏 Small time, answer dey come',
-                              '⚡ I go answer you sharp sharp',
-                              '🔥 I dey prepare correct gist for you',
-                              '👌 E go make sense, just wait',
-                              '🌟 Your answer dey come, no worry'
                             ];
-
-                            const allMessages = [...healthTips, ...nigerianPidgin];
-                            const randomMessage = allMessages[Math.floor(Math.random() * allMessages.length)];
-                            
-                            return randomMessage;
+                            return messages[Math.floor(Math.random() * messages.length)];
                           })()}
-                        </span>
-                        <span style={{ 
-                          fontSize: '20px',
-                          display: 'inline-flex',
-                          gap: '2px',
-                          letterSpacing: '2px'
-                        }}>
-                          <span style={{ animation: 'dot1 1.4s infinite' }}>.</span>
-                          <span style={{ animation: 'dot2 1.4s infinite' }}>.</span>
-                          <span style={{ animation: 'dot3 1.4s infinite' }}>.</span>
                         </span>
                       </div>
                     </div>
@@ -1259,35 +1289,24 @@ function VoiceHealthAdvisor() {
 
         {messages.length > 0 && (
           <div style={{
-            padding: '14px 18px',
+            padding: '10px 16px',
             background: '#f9fafb',
             borderTop: '1px solid #e5e7eb',
             display: 'flex',
-            justifyContent: 'center',
-            gap: '12px'
+            justifyContent: 'center'
           }}>
             <button
               onClick={clearCurrentChat}
               style={{
-                padding: '12px 24px',
+                padding: '8px 20px',
                 background: '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '15px',
+                fontSize: '13px',
                 fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                minHeight: '48px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#5568d3';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#667eea';
+                minHeight: '36px'
               }}
             >
               ↺ Clear Chat
@@ -1300,31 +1319,31 @@ function VoiceHealthAdvisor() {
             onClick={isListening ? stopListening : startListening}
             disabled={isLoading}
             style={{
-              padding: '14px',
+              padding: '12px',
               background: isListening ? '#ef4444' : '#22c55e',
               color: 'white',
               border: 'none',
               borderRadius: '12px',
               cursor: 'pointer',
-              minWidth: '52px',
-              minHeight: '52px'
+              minWidth: '48px',
+              minHeight: '48px'
             }}
           >
-            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isListening ? "Listening..." : "Type or speak your question..."}
+            placeholder={isListening ? "Listening..." : "Type or speak..."}
             className="input-textarea"
             rows={1}
             disabled={isLoading || isListening}
             style={{
-              fontSize: '15px',
-              padding: '14px',
-              minHeight: '52px'
+              fontSize: '14px',
+              padding: '12px',
+              minHeight: '48px'
             }}
           />
           
@@ -1333,84 +1352,19 @@ function VoiceHealthAdvisor() {
             disabled={!input.trim() || isLoading}
             className="send-button"
             style={{
-              minWidth: '52px',
-              minHeight: '52px',
-              padding: '14px'
+              minWidth: '48px',
+              minHeight: '48px',
+              padding: '12px'
             }}
           >
-            <Send size={22} />
+            <Send size={20} />
           </button>
         </div>
 
         <div className="disclaimer">
-          <p>
-            ⚠️ AI assistant. Always consult healthcare professionals for medical advice. Emergency? Call 112!
+          <p style={{ fontSize: '12px', margin: 0 }}>
+            ⚠️ AI assistant. Consult healthcare professionals. Emergency? Call 112!
           </p>
-        </div>
-
-        {/* Share App Section */}
-        <div style={{
-          background: '#f9fafb',
-          padding: '16px',
-          borderTop: '2px solid #e5e7eb',
-          textAlign: 'center'
-        }}>
-          <p style={{
-            fontSize: '14px',
-            color: '#374151',
-            fontWeight: '600',
-            marginBottom: '10px'
-          }}>
-            🌟 Help others! Share this app:
-          </p>
-          <div style={{
-            display: 'flex',
-            gap: '10px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => shareToWhatsApp('Check out this free Nigerian Health Advisor app! Get instant health advice in English or Pidgin: https://naija-health-advisor.vercel.app')}
-              style={{
-                padding: '10px 20px',
-                background: '#25D366',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                minHeight: '44px'
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>💬</span>
-              Share on WhatsApp
-            </button>
-            
-            <button
-              onClick={(e) => copyToClipboard('https://naija-health-advisor.vercel.app', e)}
-              style={{
-                padding: '10px 20px',
-                background: '#6B7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                minHeight: '44px'
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>🔗</span>
-              Copy Link
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1445,21 +1399,6 @@ function VoiceHealthAdvisor() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        
-        @keyframes dot1 {
-          0%, 80%, 100% { opacity: 0; }
-          40% { opacity: 1; }
-        }
-        
-        @keyframes dot2 {
-          0%, 80%, 100% { opacity: 0; }
-          60% { opacity: 1; }
-        }
-        
-        @keyframes dot3 {
-          0%, 80%, 100% { opacity: 0; }
-          80% { opacity: 1; }
         }
       `}</style>
     </div>
