@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone } from 'lucide-react';
+import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone, WifiOff, RefreshCw } from 'lucide-react';
 import './App.css';
 
 const SPECIALTIES = [
@@ -67,6 +67,8 @@ function VoiceHealthAdvisor() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('general');
   const [showEmergency, setShowEmergency] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState(null);
   
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -122,7 +124,6 @@ function VoiceHealthAdvisor() {
         v.lang.includes('en') && !v.name.includes('compact')
       );
       setAvailableVoices(englishVoices);
-      console.log('📢 Available voices:', englishVoices.length);
     };
     
     loadVoices();
@@ -226,7 +227,6 @@ function VoiceHealthAdvisor() {
     
     if (selectedVoice) {
       utterance.voice = selectedVoice;
-      console.log('🎤 Using voice:', selectedVoice.name);
     }
     
     utterance.lang = 'en-US';
@@ -241,12 +241,10 @@ function VoiceHealthAdvisor() {
     
     utterance.onstart = () => {
       setIsSpeaking(true);
-      console.log('🔊 Speaking started');
     };
     
     utterance.onend = () => {
       setIsSpeaking(false);
-      console.log('✅ Speaking ended');
       
       if (handsFreeMode && !isLoading) {
         setTimeout(() => startListening(), 1000);
@@ -291,6 +289,7 @@ function VoiceHealthAdvisor() {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setError(null);
 
     try {
       const nigerianContext = `
@@ -328,9 +327,7 @@ function VoiceHealthAdvisor() {
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        console.error('❌ Backend error:', error);
-        throw new Error('Backend request failed');
+        throw new Error(`Server error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -348,13 +345,23 @@ function VoiceHealthAdvisor() {
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setError(error.message.includes('Failed to fetch') 
+        ? 'Connection lost! Please check your internet and try again.' 
+        : 'Oops! Something went wrong. Please try again.');
+      setLastFailedMessage(messageText);
+      
+      // Remove the user message that failed
+      setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const retryLastMessage = () => {
+    if (lastFailedMessage) {
+      setError(null);
+      sendMessage(lastFailedMessage);
+      setLastFailedMessage(null);
     }
   };
 
@@ -368,6 +375,8 @@ function VoiceHealthAdvisor() {
   const clearCurrentChat = () => {
     setMessages([]);
     setInput('');
+    setError(null);
+    setLastFailedMessage(null);
     stopSpeaking();
     localStorage.removeItem(`chat_${selectedSpecialty}`);
     if (handsFreeMode) {
@@ -435,7 +444,7 @@ function VoiceHealthAdvisor() {
           <button
             onClick={toggleHandsFreeMode}
             style={{
-              padding: '10px 20px',
+              padding: '12px 24px',
               background: handsFreeMode ? '#22c55e' : '#667eea',
               color: 'white',
               border: 'none',
@@ -445,10 +454,11 @@ function VoiceHealthAdvisor() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '14px'
+              fontSize: '15px',
+              minHeight: '48px'
             }}
           >
-            <Phone size={18} />
+            <Phone size={20} />
             {handsFreeMode ? '🔴 End Call Mode' : '📞 Call Mode'}
           </button>
 
@@ -458,7 +468,7 @@ function VoiceHealthAdvisor() {
               if (voiceEnabled) stopSpeaking();
             }}
             style={{
-              padding: '10px 20px',
+              padding: '12px 24px',
               background: voiceEnabled ? '#8b5cf6' : '#9ca3af',
               color: 'white',
               border: 'none',
@@ -468,16 +478,17 @@ function VoiceHealthAdvisor() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '14px'
+              fontSize: '15px',
+              minHeight: '48px'
             }}
           >
-            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            {voiceEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
             Voice {voiceEnabled ? 'ON' : 'OFF'}
           </button>
 
           {isListening && (
             <div style={{
-              padding: '10px 20px',
+              padding: '12px 24px',
               background: '#fee2e2',
               color: '#dc2626',
               borderRadius: '8px',
@@ -485,17 +496,18 @@ function VoiceHealthAdvisor() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '14px',
-              animation: 'pulse 1.5s infinite'
+              fontSize: '15px',
+              animation: 'pulse 1.5s infinite',
+              minHeight: '48px'
             }}>
-              <Mic size={18} />
+              <Mic size={20} />
               Listening...
             </div>
           )}
 
           {isSpeaking && (
             <div style={{
-              padding: '10px 20px',
+              padding: '12px 24px',
               background: '#dbeafe',
               color: '#2563eb',
               borderRadius: '8px',
@@ -503,13 +515,56 @@ function VoiceHealthAdvisor() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '14px'
+              fontSize: '15px',
+              minHeight: '48px'
             }}>
-              <Volume2 size={18} />
+              <Volume2 size={20} />
               Speaking...
             </div>
           )}
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div style={{
+            background: '#fee2e2',
+            padding: '16px',
+            borderBottom: '2px solid #ef4444',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+            animation: 'slideDown 0.3s ease-out'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <WifiOff size={20} color="#dc2626" />
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
+                {error}
+              </span>
+            </div>
+            <button
+              onClick={retryLastMessage}
+              style={{
+                padding: '8px 16px',
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                minHeight: '40px'
+              }}
+            >
+              <RefreshCw size={16} />
+              Retry
+            </button>
+          </div>
+        )}
 
         {voiceEnabled && (
           <div style={{
@@ -522,18 +577,19 @@ function VoiceHealthAdvisor() {
             <button
               onClick={() => setShowVoiceSettings(!showVoiceSettings)}
               style={{
-                padding: '8px 16px',
+                padding: '10px 20px',
                 background: showVoiceSettings ? '#667eea' : 'white',
                 color: showVoiceSettings ? 'white' : '#667eea',
                 border: '2px solid #667eea',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: '14px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                minHeight: '44px'
               }}
             >
               🎛️ {showVoiceSettings ? 'Hide Voice Settings' : 'Voice Settings'}
@@ -569,11 +625,12 @@ function VoiceHealthAdvisor() {
                     onChange={(e) => setSelectedVoiceName(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '8px',
+                      padding: '10px',
                       borderRadius: '6px',
                       border: '2px solid #e5e7eb',
                       fontSize: '14px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      minHeight: '44px'
                     }}
                   >
                     <option value="auto">🎙️ Auto (Best Available)</option>
@@ -598,7 +655,7 @@ function VoiceHealthAdvisor() {
                   step="0.05"
                   value={voiceRate}
                   onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer' }}
+                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                   <span>Slower</span>
@@ -619,7 +676,7 @@ function VoiceHealthAdvisor() {
                   step="0.05"
                   value={voicePitch}
                   onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer' }}
+                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                   <span>Deeper</span>
@@ -634,19 +691,19 @@ function VoiceHealthAdvisor() {
                 </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button onClick={() => { setVoiceRate(0.92); setVoicePitch(1.15); }}
-                    style={{ padding: '6px 12px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    style={{ padding: '8px 14px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
                     👩 Warm Female
                   </button>
                   <button onClick={() => { setVoiceRate(0.90); setVoicePitch(0.85); }}
-                    style={{ padding: '6px 12px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    style={{ padding: '8px 14px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
                     👨 Professional Male
                   </button>
                   <button onClick={() => { setVoiceRate(0.95); setVoicePitch(1.0); }}
-                    style={{ padding: '6px 12px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    style={{ padding: '8px 14px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
                     🎯 Clear & Neutral
                   </button>
                   <button onClick={() => { setVoiceRate(1.05); setVoicePitch(1.25); }}
-                    style={{ padding: '6px 12px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                    style={{ padding: '8px 14px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
                     😊 Friendly & Upbeat
                   </button>
                 </div>
@@ -655,7 +712,7 @@ function VoiceHealthAdvisor() {
               <button
                 onClick={() => speak("Hello! This is how I sound with your current settings.")}
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 18px',
                   background: '#667eea',
                   color: 'white',
                   border: 'none',
@@ -663,7 +720,8 @@ function VoiceHealthAdvisor() {
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: '600',
-                  marginTop: '4px'
+                  marginTop: '4px',
+                  minHeight: '44px'
                 }}
               >
                 🔊 Test Voice
@@ -676,14 +734,15 @@ function VoiceHealthAdvisor() {
                   setSelectedVoiceName('auto');
                 }}
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 14px',
                   background: '#f3f4f6',
                   color: '#374151',
                   border: '2px solid #e5e7eb',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  minHeight: '40px'
                 }}
               >
                 ↺ Reset to Default
@@ -703,7 +762,7 @@ function VoiceHealthAdvisor() {
           gap: '8px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Phone size={16} color="#dc2626" />
+            <Phone size={18} color="#dc2626" />
             <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
               Emergency? Call 112 | NCDC: 0800-9700-0010
             </span>
@@ -714,10 +773,11 @@ function VoiceHealthAdvisor() {
               background: '#dc2626',
               color: 'white',
               border: 'none',
-              padding: '6px 12px',
+              padding: '8px 16px',
               borderRadius: '6px',
-              fontSize: '12px',
-              cursor: 'pointer'
+              fontSize: '13px',
+              cursor: 'pointer',
+              minHeight: '40px'
             }}
           >
             {showEmergency ? 'Hide' : 'Show'}
@@ -740,8 +800,8 @@ function VoiceHealthAdvisor() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
-          padding: '12px',
+          gap: '10px',
+          padding: '14px',
           background: '#f9fafb',
           borderBottom: '2px solid #e5e7eb',
           overflowX: 'visible'
@@ -756,8 +816,8 @@ function VoiceHealthAdvisor() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '12px 8px',
+                gap: '6px',
+                padding: '14px 10px',
                 border: selectedSpecialty === specialty.id ? '2px solid #667eea' : '2px solid #e5e7eb',
                 background: selectedSpecialty === specialty.id 
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
@@ -766,16 +826,16 @@ function VoiceHealthAdvisor() {
                 borderRadius: '12px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                fontSize: '12px',
+                fontSize: '13px',
                 fontWeight: '600',
-                minHeight: '70px'
+                minHeight: '80px'
               }}
             >
-              <span style={{ fontSize: '24px' }}>{specialty.icon}</span>
+              <span style={{ fontSize: '28px' }}>{specialty.icon}</span>
               <span style={{ 
-                fontSize: '11px', 
+                fontSize: '12px', 
                 textAlign: 'center',
-                lineHeight: '1.2',
+                lineHeight: '1.3',
                 wordBreak: 'break-word'
               }}>
                 {specialty.name}
@@ -809,20 +869,21 @@ function VoiceHealthAdvisor() {
                     width: '100%',
                     maxWidth: '500px',
                     margin: '0 auto',
-                    padding: '14px 20px',
+                    padding: '16px 24px',
                     background: showFAQ ? '#667eea' : 'white',
                     color: showFAQ ? 'white' : '#667eea',
                     border: '2px solid #667eea',
                     borderRadius: '12px',
                     cursor: 'pointer',
-                    fontSize: '15px',
+                    fontSize: '16px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '10px',
                     transition: 'all 0.2s',
-                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'
+                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
+                    minHeight: '56px'
                   }}
                   onMouseEnter={(e) => {
                     if (!showFAQ) {
@@ -835,7 +896,7 @@ function VoiceHealthAdvisor() {
                     }
                   }}
                 >
-                  <span style={{ fontSize: '22px' }}>💬</span>
+                  <span style={{ fontSize: '24px' }}>💬</span>
                   <span>{showFAQ ? '🔽 Hide Quick Questions' : '▶️ Show Quick Questions'}</span>
                 </button>
 
@@ -845,10 +906,10 @@ function VoiceHealthAdvisor() {
                     animation: 'slideDown 0.3s ease-out'
                   }}>
                     <h3 style={{
-                      fontSize: '15px',
+                      fontSize: '16px',
                       fontWeight: '600',
                       color: '#374151',
-                      marginBottom: '12px',
+                      marginBottom: '14px',
                       textAlign: 'center'
                     }}>
                       Popular Health Questions:
@@ -857,7 +918,7 @@ function VoiceHealthAdvisor() {
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(2, 1fr)',
-                      gap: '8px',
+                      gap: '10px',
                       maxWidth: '500px',
                       margin: '0 auto'
                     }}>
@@ -870,7 +931,7 @@ function VoiceHealthAdvisor() {
                             setShowFAQ(false);
                           }}
                           style={{
-                            padding: '12px',
+                            padding: '14px',
                             background: 'white',
                             border: '2px solid #e5e7eb',
                             borderRadius: '12px',
@@ -879,11 +940,11 @@ function VoiceHealthAdvisor() {
                             display: 'flex',
                             flexDirection: 'row',
                             alignItems: 'center',
-                            gap: '10px',
-                            fontSize: '13px',
+                            gap: '12px',
+                            fontSize: '14px',
                             fontWeight: '500',
                             color: '#374151',
-                            minHeight: '60px',
+                            minHeight: '68px',
                             textAlign: 'left'
                           }}
                           onMouseEnter={(e) => {
@@ -897,16 +958,16 @@ function VoiceHealthAdvisor() {
                             e.currentTarget.style.borderColor = '#e5e7eb';
                           }}
                         >
-                          <span style={{ fontSize: '28px', flexShrink: 0 }}>{faq.icon}</span>
-                          <span style={{ lineHeight: '1.3', flex: 1 }}>{faq.text}</span>
+                          <span style={{ fontSize: '32px', flexShrink: 0 }}>{faq.icon}</span>
+                          <span style={{ lineHeight: '1.4', flex: 1 }}>{faq.text}</span>
                         </button>
                       ))}
                     </div>
 
                     <p style={{
-                      fontSize: '12px',
+                      fontSize: '13px',
                       color: '#9ca3af',
-                      marginTop: '16px',
+                      marginTop: '18px',
                       textAlign: 'center'
                     }}>
                       👆 Tap a question above or type your own below!
@@ -933,20 +994,21 @@ function VoiceHealthAdvisor() {
                       <button
                         onClick={() => speak(message.content)}
                         style={{
-                          marginTop: '8px',
-                          padding: '4px 12px',
+                          marginTop: '10px',
+                          padding: '6px 14px',
                           background: '#8b5cf6',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '12px',
+                          fontSize: '13px',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '6px',
+                          minHeight: '36px'
                         }}
                       >
-                        <Volume2 size={14} />
+                        <Volume2 size={16} />
                         Play Again
                       </button>
                     )}
@@ -959,7 +1021,18 @@ function VoiceHealthAdvisor() {
                     <Bot size={20} />
                   </div>
                   <div className="message-content">
-                    <Loader2 className="loading-spinner" />
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: '#667eea'
+                    }}>
+                      <Loader2 className="loading-spinner" style={{ animation: 'spin 1s linear infinite' }} />
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                        Claude is thinking
+                        <span style={{ animation: 'dots 1.5s steps(4, end) infinite' }}>...</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -970,7 +1043,7 @@ function VoiceHealthAdvisor() {
 
         {messages.length > 0 && (
           <div style={{
-            padding: '12px 16px',
+            padding: '14px 18px',
             background: '#f9fafb',
             borderTop: '1px solid #e5e7eb',
             display: 'flex',
@@ -980,18 +1053,19 @@ function VoiceHealthAdvisor() {
             <button
               onClick={clearCurrentChat}
               style={{
-                padding: '10px 20px',
+                padding: '12px 24px',
                 background: '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '15px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                minHeight: '48px'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#5568d3';
@@ -1010,16 +1084,18 @@ function VoiceHealthAdvisor() {
             onClick={isListening ? stopListening : startListening}
             disabled={isLoading || handsFreeMode}
             style={{
-              padding: '12px',
+              padding: '14px',
               background: isListening ? '#ef4444' : '#22c55e',
               color: 'white',
               border: 'none',
               borderRadius: '12px',
               cursor: handsFreeMode ? 'not-allowed' : 'pointer',
-              opacity: handsFreeMode ? 0.5 : 1
+              opacity: handsFreeMode ? 0.5 : 1,
+              minWidth: '52px',
+              minHeight: '52px'
             }}
           >
-            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
           </button>
 
           <textarea
@@ -1030,14 +1106,24 @@ function VoiceHealthAdvisor() {
             className="input-textarea"
             rows={1}
             disabled={isLoading || isListening}
+            style={{
+              fontSize: '15px',
+              padding: '14px',
+              minHeight: '52px'
+            }}
           />
           
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || isLoading}
             className="send-button"
+            style={{
+              minWidth: '52px',
+              minHeight: '52px',
+              padding: '14px'
+            }}
           >
-            <Send size={20} />
+            <Send size={22} />
           </button>
         </div>
 
@@ -1074,6 +1160,17 @@ function VoiceHealthAdvisor() {
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes dots {
+          0%, 20% { content: '.'; }
+          40% { content: '..'; }
+          60%, 100% { content: '...'; }
         }
       `}</style>
     </div>
