@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Icons</title>
+</head>
+<body>
+    <h2>Click buttons to download icons:</h2>
+    <button onclick="create192()">Download 192x192 Icon</button>
+    <button onclick="create512()">Download 512x512 Icon</button>
+    
+    <canvas id="canvas192" width="192" height="192" style="display:none;"></canvas>
+    <canvas id="canvas512" width="512" height="512" style="display:none;"></canvas>
+    
+    <script>
+        function create192() {
+            const canvas = document.getElementById('canvas192');
+            const ctx = canvas.getContext('2d');
+            
+            // Purple gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 192, 192);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 192, 192);
+            
+            // Add emoji
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏥', 96, 100);
+            
+            // Download
+            canvas.toBlob(blob => {
+                const link = document.createElement('a');
+                link.download = 'icon-192.png';
+                link.href = URL.createObjectURL(blob);
+                link.click();
+            });
+        }
+        
+        function create512() {
+            const canvas = document.getElementById('canvas512');
+            const ctx = canvas.getContext('2d');
+            
+            // Purple gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Add emoji
+            ctx.font = 'bold 320px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏥', 256, 270);
+            
+            // Download
+            canvas.toBlob(blob => {
+                const link = document.createElement('a');
+                link.download = 'icon-512.png';
+                link.href = URL.createObjectURL(blob);
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>

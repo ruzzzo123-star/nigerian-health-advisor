@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone, WifiOff, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone } from 'lucide-react';
 import './App.css';
 
+// Nigerian-specific specialties
 const SPECIALTIES = [
   { id: 'general', name: 'General Health', icon: '🏥', color: 'bg-blue-500' },
   { id: 'malaria', name: 'Malaria & Typhoid', icon: '🦟', color: 'bg-orange-500' },
@@ -11,12 +12,14 @@ const SPECIALTIES = [
   { id: 'mental', name: 'Mental Health', icon: '🧠', color: 'bg-purple-500' },
 ];
 
+// Emergency contacts
 const EMERGENCY_CONTACTS = {
   'Lagos': { emergency: '767 / 112', ambulance: '08023147654', lasema: '767' },
   'Abuja': { emergency: '112', ambulance: '08037245625' },
   'General': { emergency: '112', ncdc: '0800-9700-0010' }
 };
 
+// FAQ Questions
 const FAQ_QUESTIONS = [
   { icon: '🦟', text: 'Treat malaria?', query: 'How can I treat malaria in Nigeria?' },
   { icon: '🤒', text: 'Typhoid symptoms?', query: 'What are the symptoms of typhoid fever?' },
@@ -32,11 +35,12 @@ const FAQ_QUESTIONS = [
   { icon: '💉', text: 'Adult vaccines?', query: 'What vaccines do adults need in Nigeria?' },
 ];
 
+// Helper functions for localStorage with 24-hour expiry
 const saveToLocalStorage = (key, data) => {
   const item = {
     data: data,
     timestamp: Date.now(),
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+    expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
   };
   localStorage.setItem(key, JSON.stringify(item));
 };
@@ -49,6 +53,7 @@ const getFromLocalStorage = (key) => {
     const item = JSON.parse(itemStr);
     const now = Date.now();
     
+    // Check if expired
     if (now > item.expiresAt) {
       localStorage.removeItem(key);
       return null;
@@ -67,27 +72,25 @@ function VoiceHealthAdvisor() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('general');
   const [showEmergency, setShowEmergency] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastFailedMessage, setLastFailedMessage] = useState(null);
   
+  // Voice states
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [handsFreeMode, setHandsFreeMode] = useState(false);
   
+  // Voice customization
   const [voiceRate, setVoiceRate] = useState(0.92);
   const [voicePitch, setVoicePitch] = useState(1.12);
   const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
   const [availableVoices, setAvailableVoices] = useState([]);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
-  // PWA Install prompt
-const [deferredPrompt, setDeferredPrompt] = useState(null);
-const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
 
+  // Load chat history when specialty changes
   useEffect(() => {
     const savedMessages = getFromLocalStorage(`chat_${selectedSpecialty}`);
     if (savedMessages && Array.isArray(savedMessages)) {
@@ -97,16 +100,18 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     }
   }, [selectedSpecialty]);
 
+  // Save chat history whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
       saveToLocalStorage(`chat_${selectedSpecialty}`, messages);
     }
   }, [messages, selectedSpecialty]);
 
+  // Clean up expired chats on mount
   useEffect(() => {
     const cleanupExpiredChats = () => {
       SPECIALTIES.forEach(specialty => {
-        getFromLocalStorage(`chat_${specialty.id}`);
+        getFromLocalStorage(`chat_${specialty.id}`); // This will auto-remove if expired
       });
     };
     cleanupExpiredChats();
@@ -120,6 +125,7 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     scrollToBottom();
   }, [messages]);
 
+  // Load available voices
   useEffect(() => {
     const loadVoices = () => {
       const voices = synthRef.current.getVoices();
@@ -127,6 +133,7 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
         v.lang.includes('en') && !v.name.includes('compact')
       );
       setAvailableVoices(englishVoices);
+      console.log('📢 Available voices:', englishVoices.length);
     };
     
     loadVoices();
@@ -135,34 +142,8 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
       synthRef.current.onvoiceschanged = loadVoices;
     }
   }, []);
-// PWA Install prompt handler
-useEffect(() => {
-  const handler = (e) => {
-    e.preventDefault();
-    setDeferredPrompt(e);
-    setShowInstallPrompt(true);
-  };
-  
-  window.addEventListener('beforeinstallprompt', handler);
-  
-  return () => {
-    window.removeEventListener('beforeinstallprompt', handler);
-  };
-}, []);
 
-const handleInstallClick = async () => {
-  if (!deferredPrompt) return;
-  
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  
-  if (outcome === 'accepted') {
-    console.log('✅ User accepted install');
-  }
-  
-  setDeferredPrompt(null);
-  setShowInstallPrompt(false);
-};
+  // Initialize Speech Recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -213,6 +194,7 @@ const handleInstallClick = async () => {
     }
   };
 
+  // Enhanced speak function
   const speak = (text) => {
     if (!voiceEnabled) return;
 
@@ -257,6 +239,7 @@ const handleInstallClick = async () => {
     
     if (selectedVoice) {
       utterance.voice = selectedVoice;
+      console.log('🎤 Using voice:', selectedVoice.name);
     }
     
     utterance.lang = 'en-US';
@@ -271,10 +254,12 @@ const handleInstallClick = async () => {
     
     utterance.onstart = () => {
       setIsSpeaking(true);
+      console.log('🔊 Speaking started');
     };
     
     utterance.onend = () => {
       setIsSpeaking(false);
+      console.log('✅ Speaking ended');
       
       if (handsFreeMode && !isLoading) {
         setTimeout(() => startListening(), 1000);
@@ -319,20 +304,28 @@ const handleInstallClick = async () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-    setError(null);
 
     try {
-      const nigerianContext = `
-      You are a health advisor for Nigerian patients. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
-      `;
+      const specialty = SPECIALTIES.find(s => s.id === selectedSpecialty);
       
+      const nigerianContext = `
+      You are a health advisor for Nigerian patients. Consider:
+      - Common Nigerian diseases (malaria, typhoid, cholera)
+      - Local medications available in Nigeria
+      - Nigerian healthcare system context
+      - Tropical climate health concerns
+      - Affordable treatment options
+      - When to visit a Nigerian hospital or pharmacy
+      Keep responses CONCISE for voice output (2-3 sentences max when possible).
+      `;
+
       const specialtyPrompts = {
         general: `You are a General Health advisor for Nigeria. ${nigerianContext}`,
-        malaria: `You are a Malaria specialist for Nigeria. ${nigerianContext}`,
-        maternal: `You are a Maternal Health specialist for Nigeria. ${nigerianContext}`,
-        nutrition: `You are a Nutrition specialist for Nigeria. ${nigerianContext}`,
-        child: `You are a Pediatric advisor for Nigeria. ${nigerianContext}`,
-        mental: `You are a Mental Health counselor for Nigeria. ${nigerianContext}`
+        malaria: `You are a Malaria specialist for Nigeria. ${nigerianContext} Focus on malaria, typhoid, and tropical diseases.`,
+        maternal: `You are a Maternal Health specialist for Nigeria. ${nigerianContext} Focus on pregnancy and maternal care.`,
+        nutrition: `You are a Nutrition specialist for Nigeria. ${nigerianContext} Focus on local Nigerian foods.`,
+        child: `You are a Pediatric advisor for Nigeria. ${nigerianContext} Focus on child health.`,
+        mental: `You are a Mental Health counselor for Nigeria. ${nigerianContext} Be culturally sensitive.`
       };
       
       const systemPrompt = specialtyPrompts[selectedSpecialty] + ` 
@@ -347,17 +340,19 @@ const handleInstallClick = async () => {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 256,
+          max_tokens: 512,
           system: systemPrompt,
           messages: [
-            ...messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-6),
+            ...messages.filter(m => m.role === 'user' || m.role === 'assistant'),
             userMessage,
           ],
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+        const error = await response.text();
+        console.error('❌ Backend error:', error);
+        throw new Error('Backend request failed');
       }
 
       const data = await response.json();
@@ -375,22 +370,13 @@ const handleInstallClick = async () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      setError(error.message.includes('Failed to fetch') 
-        ? 'Connection lost! Please check your internet and try again.' 
-        : 'Oops! Something went wrong. Please try again.');
-      setLastFailedMessage(messageText);
-      
-      setMessages((prev) => prev.slice(0, -1));
+      const errorMessage = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const retryLastMessage = () => {
-    if (lastFailedMessage) {
-      setError(null);
-      sendMessage(lastFailedMessage);
-      setLastFailedMessage(null);
     }
   };
 
@@ -404,8 +390,6 @@ const handleInstallClick = async () => {
   const clearCurrentChat = () => {
     setMessages([]);
     setInput('');
-    setError(null);
-    setLastFailedMessage(null);
     stopSpeaking();
     localStorage.removeItem(`chat_${selectedSpecialty}`);
     if (handsFreeMode) {
@@ -416,6 +400,7 @@ const handleInstallClick = async () => {
   return (
     <div className="app">
       <div className="container">
+        {/* Header */}
         <div className="header">
           <div className="header-content">
             <Heart className="header-icon" />
@@ -424,6 +409,7 @@ const handleInstallClick = async () => {
           <p className="header-subtitle">Your Nigerian health companion</p>
         </div>
 
+        {/* Fun Animated Language Bar */}
         <div style={{
           background: 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%)',
           backgroundSize: '200% 100%',
@@ -460,6 +446,7 @@ const handleInstallClick = async () => {
           </div>
         </div>
 
+        {/* Voice Controls Bar */}
         <div style={{
           background: handsFreeMode ? '#dcfce7' : '#f3f4f6',
           padding: '16px',
@@ -473,7 +460,7 @@ const handleInstallClick = async () => {
           <button
             onClick={toggleHandsFreeMode}
             style={{
-              padding: '12px 24px',
+              padding: '10px 20px',
               background: handsFreeMode ? '#22c55e' : '#667eea',
               color: 'white',
               border: 'none',
@@ -483,11 +470,10 @@ const handleInstallClick = async () => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
+              fontSize: '14px'
             }}
           >
-            <Phone size={20} />
+            <Phone size={18} />
             {handsFreeMode ? '🔴 End Call Mode' : '📞 Call Mode'}
           </button>
 
@@ -497,7 +483,7 @@ const handleInstallClick = async () => {
               if (voiceEnabled) stopSpeaking();
             }}
             style={{
-              padding: '12px 24px',
+              padding: '10px 20px',
               background: voiceEnabled ? '#8b5cf6' : '#9ca3af',
               color: 'white',
               border: 'none',
@@ -507,17 +493,16 @@ const handleInstallClick = async () => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
+              fontSize: '14px'
             }}
           >
-            {voiceEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             Voice {voiceEnabled ? 'ON' : 'OFF'}
           </button>
 
           {isListening && (
             <div style={{
-              padding: '12px 24px',
+              padding: '10px 20px',
               background: '#fee2e2',
               color: '#dc2626',
               borderRadius: '8px',
@@ -525,18 +510,17 @@ const handleInstallClick = async () => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '15px',
-              animation: 'pulse 1.5s infinite',
-              minHeight: '48px'
+              fontSize: '14px',
+              animation: 'pulse 1.5s infinite'
             }}>
-              <Mic size={20} />
+              <Mic size={18} />
               Listening...
             </div>
           )}
 
           {isSpeaking && (
             <div style={{
-              padding: '12px 24px',
+              padding: '10px 20px',
               background: '#dbeafe',
               color: '#2563eb',
               borderRadius: '8px',
@@ -544,110 +528,15 @@ const handleInstallClick = async () => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
+              fontSize: '14px'
             }}>
-              <Volume2 size={20} />
+              <Volume2 size={18} />
               Speaking...
             </div>
           )}
         </div>
 
-        {error && (
-          <div style={{
-            background: '#fee2e2',
-            padding: '16px',
-            borderBottom: '2px solid #ef4444',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-            flexWrap: 'wrap',
-            animation: 'slideDown 0.3s ease-out'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <WifiOff size={20} color="#dc2626" />
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
-                {error}
-              </span>
-            </div>
-            <button
-              onClick={retryLastMessage}
-              style={{
-                padding: '8px 16px',
-                background: '#dc2626',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                minHeight: '40px'
-              }}
-            >
-              <RefreshCw size={16} />
-              Retry
-            </button>
-          </div>
-        )}
-{/* Install App Banner */}
-{showInstallPrompt && (
-  <div style={{
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '14px 18px',
-    borderBottom: '2px solid #764ba2',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-    animation: 'slideDown 0.3s ease-out'
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-      <span style={{ fontSize: '24px' }}>📱</span>
-      <span style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
-        Install app for faster access & offline use!
-      </span>
-    </div>
-    <div style={{ display: 'flex', gap: '8px' }}>
-      <button
-        onClick={() => setShowInstallPrompt(false)}
-        style={{
-          padding: '8px 16px',
-          background: 'rgba(255,255,255,0.2)',
-          color: 'white',
-          border: '1px solid white',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '600',
-          minHeight: '40px'
-        }}
-      >
-        Later
-      </button>
-      <button
-        onClick={handleInstallClick}
-        style={{
-          padding: '8px 20px',
-          background: 'white',
-          color: '#667eea',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '600',
-          minHeight: '40px'
-        }}
-      >
-        Install
-      </button>
-    </div>
-  </div>
-)}
+        {/* Voice Settings Toggle Button */}
         {voiceEnabled && (
           <div style={{
             background: '#f9fafb',
@@ -659,19 +548,18 @@ const handleInstallClick = async () => {
             <button
               onClick={() => setShowVoiceSettings(!showVoiceSettings)}
               style={{
-                padding: '10px 20px',
+                padding: '8px 16px',
                 background: showVoiceSettings ? '#667eea' : 'white',
                 color: showVoiceSettings ? 'white' : '#667eea',
                 border: '2px solid #667eea',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                transition: 'all 0.2s',
-                minHeight: '44px'
+                transition: 'all 0.2s'
               }}
             >
               🎛️ {showVoiceSettings ? 'Hide Voice Settings' : 'Voice Settings'}
@@ -679,6 +567,7 @@ const handleInstallClick = async () => {
           </div>
         )}
 
+        {/* Voice Settings Panel */}
         {voiceEnabled && showVoiceSettings && (
           <div style={{
             background: '#f9fafb',
@@ -707,12 +596,11 @@ const handleInstallClick = async () => {
                     onChange={(e) => setSelectedVoiceName(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '10px',
+                      padding: '8px',
                       borderRadius: '6px',
                       border: '2px solid #e5e7eb',
                       fontSize: '14px',
-                      cursor: 'pointer',
-                      minHeight: '44px'
+                      cursor: 'pointer'
                     }}
                   >
                     <option value="auto">🎙️ Auto (Best Available)</option>
@@ -737,7 +625,7 @@ const handleInstallClick = async () => {
                   step="0.05"
                   value={voiceRate}
                   onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
+                  style={{ width: '100%', cursor: 'pointer' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                   <span>Slower</span>
@@ -758,7 +646,7 @@ const handleInstallClick = async () => {
                   step="0.05"
                   value={voicePitch}
                   onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', minHeight: '32px' }}
+                  style={{ width: '100%', cursor: 'pointer' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                   <span>Deeper</span>
@@ -773,19 +661,19 @@ const handleInstallClick = async () => {
                 </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button onClick={() => { setVoiceRate(0.92); setVoicePitch(1.15); }}
-                    style={{ padding: '8px 14px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
+                    style={{ padding: '6px 12px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                     👩 Warm Female
                   </button>
                   <button onClick={() => { setVoiceRate(0.90); setVoicePitch(0.85); }}
-                    style={{ padding: '8px 14px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
+                    style={{ padding: '6px 12px', background: '#dbeafe', border: '2px solid #60a5fa', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                     👨 Professional Male
                   </button>
                   <button onClick={() => { setVoiceRate(0.95); setVoicePitch(1.0); }}
-                    style={{ padding: '8px 14px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
+                    style={{ padding: '6px 12px', background: '#e0e7ff', border: '2px solid #818cf8', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                     🎯 Clear & Neutral
                   </button>
                   <button onClick={() => { setVoiceRate(1.05); setVoicePitch(1.25); }}
-                    style={{ padding: '8px 14px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '40px' }}>
+                    style={{ padding: '6px 12px', background: '#fce7f3', border: '2px solid #f472b6', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                     😊 Friendly & Upbeat
                   </button>
                 </div>
@@ -794,7 +682,7 @@ const handleInstallClick = async () => {
               <button
                 onClick={() => speak("Hello! This is how I sound with your current settings.")}
                 style={{
-                  padding: '10px 18px',
+                  padding: '8px 16px',
                   background: '#667eea',
                   color: 'white',
                   border: 'none',
@@ -802,8 +690,7 @@ const handleInstallClick = async () => {
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: '600',
-                  marginTop: '4px',
-                  minHeight: '44px'
+                  marginTop: '4px'
                 }}
               >
                 🔊 Test Voice
@@ -816,15 +703,14 @@ const handleInstallClick = async () => {
                   setSelectedVoiceName('auto');
                 }}
                 style={{
-                  padding: '8px 14px',
+                  padding: '6px 12px',
                   background: '#f3f4f6',
                   color: '#374151',
                   border: '2px solid #e5e7eb',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  minHeight: '40px'
+                  fontSize: '12px',
+                  fontWeight: '600'
                 }}
               >
                 ↺ Reset to Default
@@ -833,6 +719,7 @@ const handleInstallClick = async () => {
           </div>
         )}
 
+        {/* Emergency Banner */}
         <div style={{
           background: '#fee2e2',
           padding: '12px 16px',
@@ -844,7 +731,7 @@ const handleInstallClick = async () => {
           gap: '8px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Phone size={18} color="#dc2626" />
+            <Phone size={16} color="#dc2626" />
             <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
               Emergency? Call 112 | NCDC: 0800-9700-0010
             </span>
@@ -855,11 +742,10 @@ const handleInstallClick = async () => {
               background: '#dc2626',
               color: 'white',
               border: 'none',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '6px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              minHeight: '40px'
+              fontSize: '12px',
+              cursor: 'pointer'
             }}
           >
             {showEmergency ? 'Hide' : 'Show'}
@@ -879,11 +765,12 @@ const handleInstallClick = async () => {
           </div>
         )}
 
+        {/* Specialty Selector - Saves chat per specialty */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '10px',
-          padding: '14px',
+          gap: '8px',
+          padding: '12px',
           background: '#f9fafb',
           borderBottom: '2px solid #e5e7eb',
           overflowX: 'visible'
@@ -893,13 +780,14 @@ const handleInstallClick = async () => {
               key={specialty.id}
               onClick={() => {
                 setSelectedSpecialty(specialty.id);
+                // Chat will auto-load from localStorage in useEffect
               }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '14px 10px',
+                gap: '4px',
+                padding: '12px 8px',
                 border: selectedSpecialty === specialty.id ? '2px solid #667eea' : '2px solid #e5e7eb',
                 background: selectedSpecialty === specialty.id 
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
@@ -908,16 +796,16 @@ const handleInstallClick = async () => {
                 borderRadius: '12px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: '600',
-                minHeight: '80px'
+                minHeight: '70px'
               }}
             >
-              <span style={{ fontSize: '28px' }}>{specialty.icon}</span>
+              <span style={{ fontSize: '24px' }}>{specialty.icon}</span>
               <span style={{ 
-                fontSize: '12px', 
+                fontSize: '11px', 
                 textAlign: 'center',
-                lineHeight: '1.3',
+                lineHeight: '1.2',
                 wordBreak: 'break-word'
               }}>
                 {specialty.name}
@@ -926,6 +814,7 @@ const handleInstallClick = async () => {
           ))}
         </div>
 
+        {/* Chat Area */}
         <div className="chat-container">
           {messages.length === 0 ? (
             <div className="welcome-message">
@@ -939,6 +828,7 @@ const handleInstallClick = async () => {
                   : 'Click the microphone or type your health question!'}
               </p>
 
+              {/* FAQ Toggle Button */}
               <div style={{
                 marginTop: '24px',
                 width: '100%',
@@ -951,21 +841,20 @@ const handleInstallClick = async () => {
                     width: '100%',
                     maxWidth: '500px',
                     margin: '0 auto',
-                    padding: '16px 24px',
+                    padding: '14px 20px',
                     background: showFAQ ? '#667eea' : 'white',
                     color: showFAQ ? 'white' : '#667eea',
                     border: '2px solid #667eea',
                     borderRadius: '12px',
                     cursor: 'pointer',
-                    fontSize: '16px',
+                    fontSize: '15px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '10px',
                     transition: 'all 0.2s',
-                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
-                    minHeight: '56px'
+                    boxShadow: showFAQ ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'
                   }}
                   onMouseEnter={(e) => {
                     if (!showFAQ) {
@@ -978,20 +867,21 @@ const handleInstallClick = async () => {
                     }
                   }}
                 >
-                  <span style={{ fontSize: '24px' }}>💬</span>
+                  <span style={{ fontSize: '22px' }}>💬</span>
                   <span>{showFAQ ? '🔽 Hide Quick Questions' : '▶️ Show Quick Questions'}</span>
                 </button>
 
+                {/* FAQ Quick Questions - Collapsible */}
                 {showFAQ && (
                   <div style={{
                     marginTop: '16px',
                     animation: 'slideDown 0.3s ease-out'
                   }}>
                     <h3 style={{
-                      fontSize: '16px',
+                      fontSize: '15px',
                       fontWeight: '600',
                       color: '#374151',
-                      marginBottom: '14px',
+                      marginBottom: '12px',
                       textAlign: 'center'
                     }}>
                       Popular Health Questions:
@@ -1000,7 +890,7 @@ const handleInstallClick = async () => {
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: window.innerWidth < 640 ? '1fr' : 'repeat(2, 1fr)',
-                      gap: '10px',
+                      gap: '8px',
                       maxWidth: '500px',
                       margin: '0 auto'
                     }}>
@@ -1013,7 +903,7 @@ const handleInstallClick = async () => {
                             setShowFAQ(false);
                           }}
                           style={{
-                            padding: '14px',
+                            padding: '12px',
                             background: 'white',
                             border: '2px solid #e5e7eb',
                             borderRadius: '12px',
@@ -1022,11 +912,11 @@ const handleInstallClick = async () => {
                             display: 'flex',
                             flexDirection: 'row',
                             alignItems: 'center',
-                            gap: '12px',
-                            fontSize: '14px',
+                            gap: '10px',
+                            fontSize: '13px',
                             fontWeight: '500',
                             color: '#374151',
-                            minHeight: '68px',
+                            minHeight: '60px',
                             textAlign: 'left'
                           }}
                           onMouseEnter={(e) => {
@@ -1040,16 +930,16 @@ const handleInstallClick = async () => {
                             e.currentTarget.style.borderColor = '#e5e7eb';
                           }}
                         >
-                          <span style={{ fontSize: '32px', flexShrink: 0 }}>{faq.icon}</span>
-                          <span style={{ lineHeight: '1.4', flex: 1 }}>{faq.text}</span>
+                          <span style={{ fontSize: '28px', flexShrink: 0 }}>{faq.icon}</span>
+                          <span style={{ lineHeight: '1.3', flex: 1 }}>{faq.text}</span>
                         </button>
                       ))}
                     </div>
 
                     <p style={{
-                      fontSize: '13px',
+                      fontSize: '12px',
                       color: '#9ca3af',
-                      marginTop: '18px',
+                      marginTop: '16px',
                       textAlign: 'center'
                     }}>
                       👆 Tap a question above or type your own below!
@@ -1076,21 +966,20 @@ const handleInstallClick = async () => {
                       <button
                         onClick={() => speak(message.content)}
                         style={{
-                          marginTop: '10px',
-                          padding: '6px 14px',
+                          marginTop: '8px',
+                          padding: '4px 12px',
                           background: '#8b5cf6',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          minHeight: '36px'
+                          gap: '4px'
                         }}
                       >
-                        <Volume2 size={16} />
+                        <Volume2 size={14} />
                         Play Again
                       </button>
                     )}
@@ -1103,72 +992,7 @@ const handleInstallClick = async () => {
                     <Bot size={20} />
                   </div>
                   <div className="message-content">
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: '#667eea'
-                    }}>
-                      <Loader2 size={20} style={{ 
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                          {(() => {
-                            const healthTips = [
-                              '💡 Drink 8 glasses of water daily',
-                              '🦟 Sleep under a mosquito net',
-                              '🏥 Keep emergency numbers saved',
-                              '💊 Always complete your medication',
-                              '🧼 Wash your hands frequently',
-                              '🌡️ Check your temperature regularly',
-                              '🍎 Eat fruits and vegetables daily',
-                              '😴 Get 7-8 hours of sleep',
-                              '🚶 Exercise for 30 minutes daily',
-                              '📞 Call 112 for emergencies',
-                              '💉 Stay up to date with vaccines',
-                              '🥤 Avoid sugary drinks',
-                              '🍲 Eat balanced Nigerian meals',
-                              '🌞 Get some sunlight every day',
-                              '🧘 Take time to rest and relax'
-                            ];
-
-                            const nigerianPidgin = [
-                              '🇳🇬 Abeg wait small, I dey check am',
-                              '🔍 Make I check wetin fit help you',
-                              '⏳ I dey find answer for you now',
-                              '🤔 One moment, I dey think am',
-                              '💭 I dey reason the matter well well',
-                              '🧠 Make I use my brain check am',
-                              '📚 I dey look for better answer',
-                              '✨ E go clear for you now now',
-                              '🎯 I wan give you correct answer',
-                              '💪 Make I find the best advice',
-                              '🙏 Small time, answer dey come',
-                              '⚡ I go answer you sharp sharp',
-                              '🔥 I dey prepare correct gist for you',
-                              '👌 E go make sense, just wait',
-                              '🌟 Your answer dey come, no worry'
-                            ];
-
-                            const allMessages = [...healthTips, ...nigerianPidgin];
-                            const randomMessage = allMessages[Math.floor(Math.random() * allMessages.length)];
-                            
-                            return randomMessage;
-                          })()}
-                        </span>
-                        <span style={{ 
-                          fontSize: '20px',
-                          display: 'inline-flex',
-                          gap: '2px',
-                          letterSpacing: '2px'
-                        }}>
-                          <span style={{ animation: 'dot1 1.4s infinite' }}>.</span>
-                          <span style={{ animation: 'dot2 1.4s infinite' }}>.</span>
-                          <span style={{ animation: 'dot3 1.4s infinite' }}>.</span>
-                        </span>
-                      </div>
-                    </div>
+                    <Loader2 className="loading-spinner" />
                   </div>
                 </div>
               )}
@@ -1177,9 +1001,10 @@ const handleInstallClick = async () => {
           )}
         </div>
 
+        {/* New Chat Button - Only show when there are messages */}
         {messages.length > 0 && (
           <div style={{
-            padding: '14px 18px',
+            padding: '12px 16px',
             background: '#f9fafb',
             borderTop: '1px solid #e5e7eb',
             display: 'flex',
@@ -1189,19 +1014,18 @@ const handleInstallClick = async () => {
             <button
               onClick={clearCurrentChat}
               style={{
-                padding: '12px 24px',
+                padding: '10px 20px',
                 background: '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '15px',
+                fontSize: '14px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                transition: 'all 0.2s',
-                minHeight: '48px'
+                transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#5568d3';
@@ -1215,23 +1039,22 @@ const handleInstallClick = async () => {
           </div>
         )}
 
+        {/* Input Area */}
         <div className="input-container">
           <button
             onClick={isListening ? stopListening : startListening}
             disabled={isLoading || handsFreeMode}
             style={{
-              padding: '14px',
+              padding: '12px',
               background: isListening ? '#ef4444' : '#22c55e',
               color: 'white',
               border: 'none',
               borderRadius: '12px',
               cursor: handsFreeMode ? 'not-allowed' : 'pointer',
-              opacity: handsFreeMode ? 0.5 : 1,
-              minWidth: '52px',
-              minHeight: '52px'
+              opacity: handsFreeMode ? 0.5 : 1
             }}
           >
-            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
           <textarea
@@ -1242,27 +1065,18 @@ const handleInstallClick = async () => {
             className="input-textarea"
             rows={1}
             disabled={isLoading || isListening}
-            style={{
-              fontSize: '15px',
-              padding: '14px',
-              minHeight: '52px'
-            }}
           />
           
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || isLoading}
             className="send-button"
-            style={{
-              minWidth: '52px',
-              minHeight: '52px',
-              padding: '14px'
-            }}
           >
-            <Send size={22} />
+            <Send size={20} />
           </button>
         </div>
 
+        {/* Disclaimer */}
         <div className="disclaimer">
           <p>
             ⚠️ AI assistant. Always consult healthcare professionals for medical advice. Emergency? Call 112!
@@ -1296,26 +1110,6 @@ const handleInstallClick = async () => {
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
-        }
-        
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        @keyframes dot1 {
-          0%, 80%, 100% { opacity: 0; }
-          40% { opacity: 1; }
-        }
-        
-        @keyframes dot2 {
-          0%, 80%, 100% { opacity: 0; }
-          60% { opacity: 1; }
-        }
-        
-        @keyframes dot3 {
-          0%, 80%, 100% { opacity: 0; }
-          80% { opacity: 1; }
         }
       `}</style>
     </div>
