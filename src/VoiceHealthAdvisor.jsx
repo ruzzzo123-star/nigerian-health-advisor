@@ -593,7 +593,7 @@ const handleInstallClick = async () => {
             </button>
           </div>
         )}
-{/* Install App Banner */}
+{{/* Install App Banner */}
 {showInstallPrompt && (
   <div style={{
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -648,6 +648,36 @@ const handleInstallClick = async () => {
     </div>
   </div>
 )}
+
+{/* iOS Install Instructions Banner */}
+{(() => {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+  
+  if (isIOS && !isInStandaloneMode && messages.length === 0) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '14px 18px',
+        borderBottom: '2px solid #764ba2',
+        animation: 'slideDown 0.3s ease-out'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', color: 'white' }}>
+          <span style={{ fontSize: '28px', flexShrink: 0 }}>📱</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px' }}>
+              Install This App!
+            </div>
+            <div style={{ fontSize: '13px', lineHeight: '1.5', opacity: 0.95 }}>
+              Tap <strong>Share</strong> button below, then tap <strong>"Add to Home Screen"</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+})()}
         {voiceEnabled && (
           <div style={{
             background: '#f9fafb',
