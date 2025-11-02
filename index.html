@@ -20,18 +20,44 @@
     <script type="module" src="/src/main.jsx"></script>
     
     <!-- Register Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('✅ Service Worker registered:', registration);
-            })
-            .catch(error => {
-              console.log('❌ Service Worker registration failed:', error);
+<!-- Register Service Worker with Auto-Update -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('✅ Service Worker registered');
+          
+          // Check for updates every 60 seconds
+          setInterval(() => {
+            registration.update();
+          }, 60000);
+          
+          // Listen for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New version available!
+                console.log('🔄 New version available! Reloading...');
+                
+                // Auto-reload after 2 seconds
+                setTimeout(() => {
+                  window.location.reload();
+                }, 2000);
+              }
             });
+          });
+        })
+        .catch(error => {
+          console.log('❌ Service Worker registration failed:', error);
         });
-      }
-    </script>
-  </body>
-</html>
+    });
+    
+    // Reload when service worker takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+  }
+</script>
