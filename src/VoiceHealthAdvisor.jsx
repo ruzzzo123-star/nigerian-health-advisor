@@ -649,35 +649,70 @@ const handleInstallClick = async () => {
   </div>
 )}
 
-{/* iOS Install Instructions Banner */}
-{(() => {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
-  
-  if (isIOS && !isInStandaloneMode && messages.length === 0) {
-    return (
-      <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '14px 18px',
-        borderBottom: '2px solid #764ba2',
-        animation: 'slideDown 0.3s ease-out'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', color: 'white' }}>
-          <span style={{ fontSize: '28px', flexShrink: 0 }}>📱</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px' }}>
-              Install This App!
-            </div>
-            <div style={{ fontSize: '13px', lineHeight: '1.5', opacity: 0.95 }}>
-              Tap <strong>Share</strong> button below, then tap <strong>"Add to Home Screen"</strong>
-            </div>
+{/* iOS Install Instructions - Dismissible */}
+{messages.length === 0 && 
+ /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+ !localStorage.getItem('ios-banner-dismissed') && (
+  <div style={{
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: '14px 18px',
+    borderBottom: '2px solid #764ba2',
+    animation: 'slideDown 0.3s ease-out'
+  }}>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'flex-start', 
+      justifyContent: 'space-between',
+      gap: '12px', 
+      color: 'white' 
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+        <span style={{ fontSize: '28px', flexShrink: 0 }}>📱</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px' }}>
+            Install This App!
+          </div>
+          <div style={{ fontSize: '13px', lineHeight: '1.5', opacity: 0.95 }}>
+            Tap <strong style={{ 
+              background: 'rgba(255,255,255,0.2)', 
+              padding: '2px 6px', 
+              borderRadius: '4px' 
+            }}>Share ⬆️</strong> button below, then tap <strong style={{ 
+              background: 'rgba(255,255,255,0.2)', 
+              padding: '2px 6px', 
+              borderRadius: '4px' 
+            }}>"Add to Home Screen"</strong>
           </div>
         </div>
       </div>
-    );
-  }
-  return null;
-})()}
+      <button
+        onClick={() => {
+          localStorage.setItem('ios-banner-dismissed', 'true');
+          setMessages([...messages]);
+        }}
+        style={{
+          background: 'rgba(255,255,255,0.2)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          color: 'white',
+          fontSize: '20px',
+          cursor: 'pointer',
+          padding: '4px 8px',
+          lineHeight: '1',
+          borderRadius: '4px',
+          minWidth: '32px',
+          minHeight: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+        aria-label="Dismiss install banner"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+)}
         {voiceEnabled && (
           <div style={{
             background: '#f9fafb',
