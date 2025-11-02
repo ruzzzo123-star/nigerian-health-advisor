@@ -73,22 +73,18 @@ function VoiceHealthAdvisor() {
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [handsFreeMode, setHandsFreeMode] = useState(false);
   
   const [voiceRate, setVoiceRate] = useState(0.92);
   const [voicePitch, setVoicePitch] = useState(1.12);
   const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
   const [availableVoices, setAvailableVoices] = useState([]);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
-
+  
   // Location state
-const [userLocation, setUserLocation] = useState(null);
-const [detectedCity, setDetectedCity] = useState(null);
-const [locationPermission, setLocationPermission] = useState('pending'); // pending, granted, denied
-const [locationEnabled, setLocationEnabled] = useState(false); // Start disabled 
-// PWA Install prompt
-const [deferredPrompt, setDeferredPrompt] = useState(null);
-const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [detectedCity, setDetectedCity] = useState(null);
+  const [locationPermission, setLocationPermission] = useState('pending');
+  const [locationEnabled, setLocationEnabled] = useState(false);
   
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -142,99 +138,6 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     }
   }, []);
 
-// Detect user location - only when enabled
-useEffect(() => {
-  if (!locationEnabled) return; // Don't run if disabled
-  
-  const detectLocation = async () => {
-    // First try HTML5 Geolocation
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lon: longitude });
-          setLocationPermission('granted');
-          
-          // Reverse geocode to get city
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-            );
-            const data = await response.json();
-            
-            const city = data.address.city || 
-                        data.address.town || 
-                        data.address.state_district || 
-                        data.address.state;
-            
-            setDetectedCity(city);
-            console.log('🗺️ Detected location:', city);
-          } catch (error) {
-            console.error('Geocoding error:', error);
-          }
-        },
-        (error) => {
-          console.log('Location permission denied or unavailable');
-          setLocationPermission('denied');
-          // Fallback: Try to detect from IP
-          detectFromIP();
-        },
-        {
-          timeout: 10000,
-          enableHighAccuracy: false
-        }
-      );
-    } else {
-      // Fallback to IP-based detection
-      detectFromIP();
-    }
-  };
-
-  const detectFromIP = async () => {
-    try {
-      // Using ipapi.co - free tier, no API key needed
-      const response = await fetch('https://ipapi.co/json/');
-      const data = await response.json();
-      
-      setDetectedCity(data.city);
-      setUserLocation({ lat: data.latitude, lon: data.longitude });
-      console.log('🌐 Detected from IP:', data.city);
-    } catch (error) {
-      console.error('IP detection failed:', error);
-      setDetectedCity('Nigeria'); // Fallback
-    }
-  };
-
-detectLocation();
-}, [locationEnabled]); // Add this dependency!
-// PWA Install prompt handler
-useEffect(() => {
-  const handler = (e) => {
-    e.preventDefault();
-    setDeferredPrompt(e);
-    setShowInstallPrompt(true);
-  };
-  
-  window.addEventListener('beforeinstallprompt', handler);
-  
-  return () => {
-    window.removeEventListener('beforeinstallprompt', handler);
-  };
-}, []);
-
-const handleInstallClick = async () => {
-  if (!deferredPrompt) return;
-  
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  
-  if (outcome === 'accepted') {
-    console.log('✅ User accepted install');
-  }
-  
-  setDeferredPrompt(null);
-  setShowInstallPrompt(false);
-};
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -247,10 +150,6 @@ const handleInstallClick = async () => {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
-        
-        if (handsFreeMode) {
-          setTimeout(() => sendMessage(transcript), 500);
-        }
       };
 
       recognitionRef.current.onerror = (event) => {
@@ -269,7 +168,68 @@ const handleInstallClick = async () => {
       }
       synthRef.current.cancel();
     };
-  }, [handsFreeMode]);
+  }, []);
+
+  // Detect user location - only when enabled
+  useEffect(() => {
+    if (!locationEnabled) return;
+    
+    const detectLocation = async () => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation({ lat: latitude, lon: longitude });
+            setLocationPermission('granted');
+            
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+              );
+              const data = await response.json();
+              
+              const city = data.address.city || 
+                          data.address.town || 
+                          data.address.state_district || 
+                          data.address.state;
+              
+              setDetectedCity(city);
+              console.log('🗺️ Detected location:', city);
+            } catch (error) {
+              console.error('Geocoding error:', error);
+            }
+          },
+          (error) => {
+            console.log('Location permission denied or unavailable');
+            setLocationPermission('denied');
+            detectFromIP();
+          },
+          {
+            timeout: 10000,
+            enableHighAccuracy: false
+          }
+        );
+      } else {
+        detectFromIP();
+      }
+    };
+
+    const detectFromIP = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        
+        setDetectedCity(data.city);
+        setUserLocation({ lat: data.latitude, lon: data.longitude });
+        console.log('🌐 Detected from IP:', data.city);
+      } catch (error) {
+        console.error('IP detection failed:', error);
+        setDetectedCity('Nigeria');
+      }
+    };
+
+    detectLocation();
+  }, [locationEnabled]);
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
@@ -347,10 +307,6 @@ const handleInstallClick = async () => {
     
     utterance.onend = () => {
       setIsSpeaking(false);
-      
-      if (handsFreeMode && !isLoading) {
-        setTimeout(() => startListening(), 1000);
-      }
     };
     
     utterance.onerror = (event) => {
@@ -366,16 +322,42 @@ const handleInstallClick = async () => {
     setIsSpeaking(false);
   };
 
-  const toggleHandsFreeMode = () => {
-    const newMode = !handsFreeMode;
-    setHandsFreeMode(newMode);
+  // Share to WhatsApp
+  const shareToWhatsApp = (text) => {
+    const appName = "Nigerian Health Advisor";
+    const appUrl = "https://naija-health-advisor.vercel.app";
+    const message = `${text}\n\n---\nFrom ${appName}\n${appUrl}`;
     
-    if (newMode) {
-      setVoiceEnabled(true);
-      startListening();
-    } else {
-      stopListening();
-      stopSpeaking();
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // Share via SMS
+  const shareToSMS = (text) => {
+    const appName = "Nigerian Health Advisor";
+    const appUrl = "https://naija-health-advisor.vercel.app";
+    const message = `${text}\n\n---\nFrom ${appName}: ${appUrl}`;
+    
+    const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
+    window.location.href = smsUrl;
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = async (text, event) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      
+      const button = event.target.closest('button');
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<span style="font-size: 16px">✅</span> Copied!';
+      button.style.background = '#22c55e';
+      
+      setTimeout(() => {
+        button.innerHTML = originalHTML;
+        button.style.background = '#6B7280';
+      }, 2000);
+    } catch (err) {
+      alert('Failed to copy. Please try again.');
     }
   };
 
@@ -394,10 +376,10 @@ const handleInstallClick = async () => {
     setError(null);
 
     try {
-   const nigerianContext = `
-You are a health advisor for Nigerian patients${detectedCity ? ` in ${detectedCity}` : ''}. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
-${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-specific advice when relevant.` : ''}
-`;
+      const nigerianContext = `
+      You are a health advisor for Nigerian patients${detectedCity ? ` in ${detectedCity}` : ''}. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
+      ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-specific advice when relevant.` : ''}
+      `;
       
       const specialtyPrompts = {
         general: `You are a General Health advisor for Nigeria. ${nigerianContext}`,
@@ -481,9 +463,6 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
     setLastFailedMessage(null);
     stopSpeaking();
     localStorage.removeItem(`chat_${selectedSpecialty}`);
-    if (handsFreeMode) {
-      setHandsFreeMode(false);
-    }
   };
 
   return (
@@ -533,93 +512,68 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
           </div>
         </div>
 
-{/* Location Badge */}
-{detectedCity && (
-  <div style={{
-    background: '#f0fdf4',
-    padding: '10px 16px',
-    borderBottom: '1px solid #86efac',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '8px'
-  }}>
-    <span style={{ fontSize: '16px' }}>📍</span>
-    <span style={{ fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
-      Detected: {detectedCity}, Nigeria
-    </span>
-    {locationPermission === 'denied' && (
-      <span style={{ 
-        fontSize: '11px', 
-        color: '#6b7280',
-        marginLeft: '4px'
-      }}>
-        (approximate)
-      </span>
-    )}
-  </div>
-)}
-{/* Compact Controls - Location Only */}
-<div style={{
-  background: '#f9fafb',
-  padding: '10px 16px',
-  borderBottom: '1px solid #e5e7eb',
-  display: 'flex',
-  gap: '8px',
-  justifyContent: 'center',
-  alignItems: 'center',
-  flexWrap: 'wrap'
-}}>
-  <button
-    onClick={() => setLocationEnabled(!locationEnabled)}
-    style={{
-      padding: '8px 16px',
-      background: locationEnabled ? '#22c55e' : 'white',
-      color: locationEnabled ? 'white' : '#374151',
-      border: '2px solid ' + (locationEnabled ? '#22c55e' : '#e5e7eb'),
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: '600',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '6px',
-      minHeight: '36px',
-      transition: 'all 0.2s'
-    }}
-  >
-    <span style={{ fontSize: '14px' }}>📍</span>
-    <span>{locationEnabled ? 'Location ON' : 'Location OFF'}</span>
-  </button>
+        {/* Compact Controls - Location Only */}
+        <div style={{
+          background: '#f9fafb',
+          padding: '10px 16px',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          gap: '8px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={() => setLocationEnabled(!locationEnabled)}
+            style={{
+              padding: '8px 16px',
+              background: locationEnabled ? '#22c55e' : 'white',
+              color: locationEnabled ? 'white' : '#374151',
+              border: '2px solid ' + (locationEnabled ? '#22c55e' : '#e5e7eb'),
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              minHeight: '36px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span style={{ fontSize: '14px' }}>📍</span>
+            <span>{locationEnabled ? 'Location ON' : 'Location OFF'}</span>
+          </button>
 
-  {!locationEnabled && (
-    <span style={{
-      fontSize: '11px',
-      color: '#6b7280',
-      maxWidth: '300px'
-    }}>
-      Enable for personalized emergency numbers
-    </span>
-  )}
-</div>
+          {!locationEnabled && (
+            <span style={{
+              fontSize: '11px',
+              color: '#6b7280',
+              maxWidth: '300px'
+            }}>
+              Enable for personalized emergency numbers
+            </span>
+          )}
+        </div>
 
-{/* Location Info Badge */}
-{detectedCity && locationEnabled && (
-  <div style={{
-    background: '#f0fdf4',
-    padding: '8px 16px',
-    borderBottom: '1px solid #86efac',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '6px'
-  }}>
-    <span style={{ fontSize: '14px' }}>📍</span>
-    <span style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>
-      {detectedCity}, Nigeria
-    </span>
-  </div>
-)}
+        {/* Location Info Badge */}
+        {detectedCity && locationEnabled && (
+          <div style={{
+            background: '#f0fdf4',
+            padding: '8px 16px',
+            borderBottom: '1px solid #86efac',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span style={{ fontSize: '14px' }}>📍</span>
+            <span style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>
+              {detectedCity}, Nigeria
+            </span>
+          </div>
+        )}
+
         {error && (
           <div style={{
             background: '#fee2e2',
@@ -661,125 +615,6 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
           </div>
         )}
 
-{showInstallPrompt && (
-  <div style={{
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '14px 18px',
-    borderBottom: '2px solid #764ba2',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-    animation: 'slideDown 0.3s ease-out'
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-      <span style={{ fontSize: '24px' }}>📱</span>
-      <span style={{ fontSize: '14px', color: 'white', fontWeight: '600' }}>
-        Install app for faster access & offline use!
-      </span>
-    </div>
-    <div style={{ display: 'flex', gap: '8px' }}>
-      <button
-        onClick={() => setShowInstallPrompt(false)}
-        style={{
-          padding: '8px 16px',
-          background: 'rgba(255,255,255,0.2)',
-          color: 'white',
-          border: '1px solid white',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '600',
-          minHeight: '40px'
-        }}
-      >
-        Later
-      </button>
-      <button
-        onClick={handleInstallClick}
-        style={{
-          padding: '8px 20px',
-          background: 'white',
-          color: '#667eea',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '13px',
-          fontWeight: '600',
-          minHeight: '40px'
-        }}
-      >
-        Install
-      </button>
-    </div>
-  </div>
-)}
-
-{/* iOS Install Instructions - Dismissible */}
-{messages.length === 0 && 
- /iPad|iPhone|iPod/.test(navigator.userAgent) && 
- !localStorage.getItem('ios-banner-dismissed') && (
-  <div style={{
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '14px 18px',
-    borderBottom: '2px solid #764ba2',
-    animation: 'slideDown 0.3s ease-out'
-  }}>
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'flex-start', 
-      justifyContent: 'space-between',
-      gap: '12px', 
-      color: 'white' 
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
-        <span style={{ fontSize: '28px', flexShrink: 0 }}>📱</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px' }}>
-            Install This App!
-          </div>
-          <div style={{ fontSize: '13px', lineHeight: '1.5', opacity: 0.95 }}>
-            Tap <strong style={{ 
-              background: 'rgba(255,255,255,0.2)', 
-              padding: '2px 6px', 
-              borderRadius: '4px' 
-            }}>Share ⬆️</strong> button below, then tap <strong style={{ 
-              background: 'rgba(255,255,255,0.2)', 
-              padding: '2px 6px', 
-              borderRadius: '4px' 
-            }}>"Add to Home Screen"</strong>
-          </div>
-        </div>
-      </div>
-      <button
-        onClick={() => {
-          localStorage.setItem('ios-banner-dismissed', 'true');
-          setMessages([...messages]);
-        }}
-        style={{
-          background: 'rgba(255,255,255,0.2)',
-          border: '1px solid rgba(255,255,255,0.4)',
-          color: 'white',
-          fontSize: '20px',
-          cursor: 'pointer',
-          padding: '4px 8px',
-          lineHeight: '1',
-          borderRadius: '4px',
-          minWidth: '32px',
-          minHeight: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0
-        }}
-        aria-label="Dismiss install banner"
-      >
-        ✕
-      </button>
-    </div>
-  </div>
-)}
         {voiceEnabled && (
           <div style={{
             background: '#f9fafb',
@@ -966,91 +801,92 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
         )}
 
         <div style={{
-  background: '#fee2e2',
-  padding: '12px 16px',
-  borderBottom: '2px solid #ef4444',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '8px'
-}}>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <Phone size={18} color="#dc2626" />
-    <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
-      {(() => {
-        const cityName = detectedCity?.toLowerCase() || '';
-        
-        if (cityName.includes('lagos')) {
-          return 'Emergency? Lagos: 767 / 112 | Ambulance: 08023147654';
-        } else if (cityName.includes('abuja')) {
-          return 'Emergency? Abuja: 112 | Ambulance: 08037245625';
-        } else {
-          return 'Emergency? Call 112 | NCDC: 0800-9700-0010';
-        }
-      })()}
-    </span>
-  </div>
-  <button
-    onClick={() => setShowEmergency(!showEmergency)}
-    style={{
-      background: '#dc2626',
-      color: 'white',
-      border: 'none',
-      padding: '8px 16px',
-      borderRadius: '6px',
-      fontSize: '13px',
-      cursor: 'pointer',
-      minHeight: '40px'
-    }}
-  >
-    {showEmergency ? 'Hide' : 'Show'}
-  </button>
-</div>
+          background: '#fee2e2',
+          padding: '12px 16px',
+          borderBottom: '2px solid #ef4444',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Phone size={18} color="#dc2626" />
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
+              {(() => {
+                const cityName = detectedCity?.toLowerCase() || '';
+                
+                if (cityName.includes('lagos')) {
+                  return 'Emergency? Lagos: 767 / 112 | Ambulance: 08023147654';
+                } else if (cityName.includes('abuja')) {
+                  return 'Emergency? Abuja: 112 | Ambulance: 08037245625';
+                } else {
+                  return 'Emergency? Call 112 | NCDC: 0800-9700-0010';
+                }
+              })()}
+            </span>
+          </div>
+          <button
+            onClick={() => setShowEmergency(!showEmergency)}
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              minHeight: '40px'
+            }}
+          >
+            {showEmergency ? 'Hide' : 'Show'}
+          </button>
+        </div>
 
-{showEmergency && (
-  <div style={{
-    background: '#fef2f2',
-    padding: '16px',
-    borderBottom: '1px solid #fecaca',
-    fontSize: '14px'
-  }}>
-    {(() => {
-      const cityName = detectedCity?.toLowerCase() || '';
-      
-      if (cityName.includes('lagos')) {
-        return (
-          <>
-            <div><strong>📍 Lagos Emergency Numbers:</strong></div>
-            <div>Emergency: 767 / 112</div>
-            <div>Ambulance: 08023147654</div>
-            <div>LASEMA: 767</div>
-            <div>NCDC: 0800-9700-0010</div>
-          </>
-        );
-      } else if (cityName.includes('abuja')) {
-        return (
-          <>
-            <div><strong>📍 Abuja Emergency Numbers:</strong></div>
-            <div>Emergency: 112</div>
-            <div>Ambulance: 08037245625</div>
-            <div>NCDC: 0800-9700-0010</div>
-          </>
-        );
-      } else {
-        return (
-          <>
-            <div><strong>📍 Nigeria Emergency Numbers:</strong></div>
-            <div>Emergency: 112 (National)</div>
-            <div>NCDC: 0800-9700-0010</div>
-            <div>Lagos: 767</div>
-            <div>For your city-specific numbers, search "{detectedCity || 'your city'} emergency numbers"</div>
-          </>
-        );
-      }
-    })()}
-  </div>
-)}
+        {showEmergency && (
+          <div style={{
+            background: '#fef2f2',
+            padding: '16px',
+            borderBottom: '1px solid #fecaca',
+            fontSize: '14px'
+          }}>
+            {(() => {
+              const cityName = detectedCity?.toLowerCase() || '';
+              
+              if (cityName.includes('lagos')) {
+                return (
+                  <>
+                    <div><strong>📍 Lagos Emergency Numbers:</strong></div>
+                    <div>Emergency: 767 / 112</div>
+                    <div>Ambulance: 08023147654</div>
+                    <div>LASEMA: 767</div>
+                    <div>NCDC: 0800-9700-0010</div>
+                  </>
+                );
+              } else if (cityName.includes('abuja')) {
+                return (
+                  <>
+                    <div><strong>📍 Abuja Emergency Numbers:</strong></div>
+                    <div>Emergency: 112</div>
+                    <div>Ambulance: 08037245625</div>
+                    <div>NCDC: 0800-9700-0010</div>
+                  </>
+                );
+              } else {
+                return (
+                  <>
+                    <div><strong>📍 Nigeria Emergency Numbers:</strong></div>
+                    <div>Emergency: 112 (National)</div>
+                    <div>NCDC: 0800-9700-0010</div>
+                    <div>Lagos: 767</div>
+                    <div>For your city-specific numbers, search "{detectedCity || 'your city'} emergency numbers"</div>
+                  </>
+                );
+              }
+            })()}
+          </div>
+        )}
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -1103,12 +939,10 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
             <div className="welcome-message">
               <Bot size={48} className="welcome-icon" />
               <h2 className="welcome-title">
-                {handsFreeMode ? '📞 I dey listen...' : '🎤 Speak or Type Your Question'}
+                🎤 Speak or Type Your Question
               </h2>
               <p className="welcome-text">
-                {handsFreeMode 
-                  ? 'Just talk! I go respond with voice automatically.'
-                  : 'Click the microphone or type your health question!'}
+                Click the microphone or type your health question!
               </p>
 
               <div style={{
@@ -1244,27 +1078,101 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
                   </div>
                   <div className="message-content">
                     {message.content}
-                    {message.role === 'assistant' && voiceEnabled && (
-                      <button
-                        onClick={() => speak(message.content)}
-                        style={{
-                          marginTop: '10px',
-                          padding: '6px 14px',
-                          background: '#8b5cf6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          minHeight: '36px'
-                        }}
-                      >
-                        <Volume2 size={16} />
-                        Play Again
-                      </button>
+                    
+                    {/* Action Buttons for Assistant Messages */}
+                    {message.role === 'assistant' && (
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginTop: '12px',
+                        flexWrap: 'wrap'
+                      }}>
+                        {voiceEnabled && (
+                          <button
+                            onClick={() => speak(message.content)}
+                            style={{
+                              padding: '6px 14px',
+                              background: '#8b5cf6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              minHeight: '36px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            <Volume2 size={16} />
+                            Play Again
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={() => shareToWhatsApp(message.content)}
+                          style={{
+                            padding: '6px 14px',
+                            background: '#25D366',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            minHeight: '36px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>💬</span>
+                          WhatsApp
+                        </button>
+                        
+                        <button
+                          onClick={() => shareToSMS(message.content)}
+                          style={{
+                            padding: '6px 14px',
+                            background: '#0EA5E9',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            minHeight: '36px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>💬</span>
+                          SMS
+                        </button>
+                        
+                        <button
+                          onClick={(e) => copyToClipboard(message.content, e)}
+                          style={{
+                            padding: '6px 14px',
+                            background: '#6B7280',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            minHeight: '36px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>📋</span>
+                          Copy
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1390,15 +1298,14 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
         <div className="input-container">
           <button
             onClick={isListening ? stopListening : startListening}
-            disabled={isLoading || handsFreeMode}
+            disabled={isLoading}
             style={{
               padding: '14px',
               background: isListening ? '#ef4444' : '#22c55e',
               color: 'white',
               border: 'none',
               borderRadius: '12px',
-              cursor: handsFreeMode ? 'not-allowed' : 'pointer',
-              opacity: handsFreeMode ? 0.5 : 1,
+              cursor: 'pointer',
               minWidth: '52px',
               minHeight: '52px'
             }}
@@ -1439,6 +1346,71 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
           <p>
             ⚠️ AI assistant. Always consult healthcare professionals for medical advice. Emergency? Call 112!
           </p>
+        </div>
+
+        {/* Share App Section */}
+        <div style={{
+          background: '#f9fafb',
+          padding: '16px',
+          borderTop: '2px solid #e5e7eb',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            color: '#374151',
+            fontWeight: '600',
+            marginBottom: '10px'
+          }}>
+            🌟 Help others! Share this app:
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => shareToWhatsApp('Check out this free Nigerian Health Advisor app! Get instant health advice in English or Pidgin: https://naija-health-advisor.vercel.app')}
+              style={{
+                padding: '10px 20px',
+                background: '#25D366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minHeight: '44px'
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>💬</span>
+              Share on WhatsApp
+            </button>
+            
+            <button
+              onClick={(e) => copyToClipboard('https://naija-health-advisor.vercel.app', e)}
+              style={{
+                padding: '10px 20px',
+                background: '#6B7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minHeight: '44px'
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>🔗</span>
+              Copy Link
+            </button>
+          </div>
         </div>
       </div>
 
