@@ -532,6 +532,67 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
             }}>🇳🇬</span>
           </div>
         </div>
+{/* Location Toggle Button */}
+<div style={{
+  background: '#f9fafb',
+  padding: '12px 16px',
+  borderBottom: '1px solid #e5e7eb',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: '12px',
+  flexWrap: 'wrap'
+}}>
+  <button
+    onClick={() => setLocationEnabled(!locationEnabled)}
+    style={{
+      padding: '10px 20px',
+      background: locationEnabled ? '#22c55e' : '#9ca3af',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      minHeight: '44px',
+      transition: 'all 0.2s'
+    }}
+  >
+    <span style={{ fontSize: '18px' }}>📍</span>
+    <span>Location {locationEnabled ? 'ON' : 'OFF'}</span>
+  </button>
+  
+  {detectedCity && locationEnabled && (
+    <div style={{
+      padding: '8px 16px',
+      background: '#dcfce7',
+      borderRadius: '8px',
+      fontSize: '13px',
+      color: '#15803d',
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
+    }}>
+      <span>📍</span>
+      <span>{detectedCity}, Nigeria</span>
+    </div>
+  )}
+  
+  {!locationEnabled && (
+    <span style={{
+      fontSize: '12px',
+      color: '#6b7280',
+      maxWidth: '400px',
+      textAlign: 'center'
+    }}>
+      Enable location for personalized emergency numbers & health advice
+    </span>
+  )}
+</div>
 {/* Location Badge */}
 {detectedCity && (
   <div style={{
