@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone } from 'lucide-react';
 import './App.css';
 
-// Nigerian-specific specialties
 const SPECIALTIES = [
   { id: 'general', name: 'General Health', icon: '🏥', color: 'bg-blue-500' },
   { id: 'malaria', name: 'Malaria & Typhoid', icon: '🦟', color: 'bg-orange-500' },
@@ -12,14 +11,12 @@ const SPECIALTIES = [
   { id: 'mental', name: 'Mental Health', icon: '🧠', color: 'bg-purple-500' },
 ];
 
-// Emergency contacts
 const EMERGENCY_CONTACTS = {
   'Lagos': { emergency: '767 / 112', ambulance: '08023147654', lasema: '767' },
   'Abuja': { emergency: '112', ambulance: '08037245625' },
   'General': { emergency: '112', ncdc: '0800-9700-0010' }
 };
 
-// FAQ Questions
 const FAQ_QUESTIONS = [
   { icon: '🦟', text: 'Treat malaria?', query: 'How can I treat malaria in Nigeria?' },
   { icon: '🤒', text: 'Typhoid symptoms?', query: 'What are the symptoms of typhoid fever?' },
@@ -35,12 +32,11 @@ const FAQ_QUESTIONS = [
   { icon: '💉', text: 'Adult vaccines?', query: 'What vaccines do adults need in Nigeria?' },
 ];
 
-// Helper functions for localStorage with 24-hour expiry
 const saveToLocalStorage = (key, data) => {
   const item = {
     data: data,
     timestamp: Date.now(),
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
   };
   localStorage.setItem(key, JSON.stringify(item));
 };
@@ -53,7 +49,6 @@ const getFromLocalStorage = (key) => {
     const item = JSON.parse(itemStr);
     const now = Date.now();
     
-    // Check if expired
     if (now > item.expiresAt) {
       localStorage.removeItem(key);
       return null;
@@ -73,13 +68,11 @@ function VoiceHealthAdvisor() {
   const [showEmergency, setShowEmergency] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   
-  // Voice states
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [handsFreeMode, setHandsFreeMode] = useState(false);
   
-  // Voice customization
   const [voiceRate, setVoiceRate] = useState(0.92);
   const [voicePitch, setVoicePitch] = useState(1.12);
   const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
@@ -90,7 +83,6 @@ function VoiceHealthAdvisor() {
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
 
-  // Load chat history when specialty changes
   useEffect(() => {
     const savedMessages = getFromLocalStorage(`chat_${selectedSpecialty}`);
     if (savedMessages && Array.isArray(savedMessages)) {
@@ -100,18 +92,16 @@ function VoiceHealthAdvisor() {
     }
   }, [selectedSpecialty]);
 
-  // Save chat history whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
       saveToLocalStorage(`chat_${selectedSpecialty}`, messages);
     }
   }, [messages, selectedSpecialty]);
 
-  // Clean up expired chats on mount
   useEffect(() => {
     const cleanupExpiredChats = () => {
       SPECIALTIES.forEach(specialty => {
-        getFromLocalStorage(`chat_${specialty.id}`); // This will auto-remove if expired
+        getFromLocalStorage(`chat_${specialty.id}`);
       });
     };
     cleanupExpiredChats();
@@ -125,7 +115,6 @@ function VoiceHealthAdvisor() {
     scrollToBottom();
   }, [messages]);
 
-  // Load available voices
   useEffect(() => {
     const loadVoices = () => {
       const voices = synthRef.current.getVoices();
@@ -143,7 +132,6 @@ function VoiceHealthAdvisor() {
     }
   }, []);
 
-  // Initialize Speech Recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -194,7 +182,6 @@ function VoiceHealthAdvisor() {
     }
   };
 
-  // Enhanced speak function
   const speak = (text) => {
     if (!voiceEnabled) return;
 
@@ -306,26 +293,17 @@ function VoiceHealthAdvisor() {
     setIsLoading(true);
 
     try {
-      const specialty = SPECIALTIES.find(s => s.id === selectedSpecialty);
-      
       const nigerianContext = `
-      You are a health advisor for Nigerian patients. Consider:
-      - Common Nigerian diseases (malaria, typhoid, cholera)
-      - Local medications available in Nigeria
-      - Nigerian healthcare system context
-      - Tropical climate health concerns
-      - Affordable treatment options
-      - When to visit a Nigerian hospital or pharmacy
-      Keep responses CONCISE for voice output (2-3 sentences max when possible).
+      You are a health advisor for Nigerian patients. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
       `;
-
+      
       const specialtyPrompts = {
         general: `You are a General Health advisor for Nigeria. ${nigerianContext}`,
-        malaria: `You are a Malaria specialist for Nigeria. ${nigerianContext} Focus on malaria, typhoid, and tropical diseases.`,
-        maternal: `You are a Maternal Health specialist for Nigeria. ${nigerianContext} Focus on pregnancy and maternal care.`,
-        nutrition: `You are a Nutrition specialist for Nigeria. ${nigerianContext} Focus on local Nigerian foods.`,
-        child: `You are a Pediatric advisor for Nigeria. ${nigerianContext} Focus on child health.`,
-        mental: `You are a Mental Health counselor for Nigeria. ${nigerianContext} Be culturally sensitive.`
+        malaria: `You are a Malaria specialist for Nigeria. ${nigerianContext}`,
+        maternal: `You are a Maternal Health specialist for Nigeria. ${nigerianContext}`,
+        nutrition: `You are a Nutrition specialist for Nigeria. ${nigerianContext}`,
+        child: `You are a Pediatric advisor for Nigeria. ${nigerianContext}`,
+        mental: `You are a Mental Health counselor for Nigeria. ${nigerianContext}`
       };
       
       const systemPrompt = specialtyPrompts[selectedSpecialty] + ` 
@@ -340,10 +318,10 @@ function VoiceHealthAdvisor() {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 512,
+          max_tokens: 256,
           system: systemPrompt,
           messages: [
-            ...messages.filter(m => m.role === 'user' || m.role === 'assistant'),
+            ...messages.filter(m => m.role === 'user' || m.role === 'assistant').slice(-6),
             userMessage,
           ],
         }),
@@ -400,7 +378,6 @@ function VoiceHealthAdvisor() {
   return (
     <div className="app">
       <div className="container">
-        {/* Header */}
         <div className="header">
           <div className="header-content">
             <Heart className="header-icon" />
@@ -409,7 +386,6 @@ function VoiceHealthAdvisor() {
           <p className="header-subtitle">Your Nigerian health companion</p>
         </div>
 
-        {/* Fun Animated Language Bar */}
         <div style={{
           background: 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%)',
           backgroundSize: '200% 100%',
@@ -446,7 +422,6 @@ function VoiceHealthAdvisor() {
           </div>
         </div>
 
-        {/* Voice Controls Bar */}
         <div style={{
           background: handsFreeMode ? '#dcfce7' : '#f3f4f6',
           padding: '16px',
@@ -536,7 +511,6 @@ function VoiceHealthAdvisor() {
           )}
         </div>
 
-        {/* Voice Settings Toggle Button */}
         {voiceEnabled && (
           <div style={{
             background: '#f9fafb',
@@ -567,7 +541,6 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
-        {/* Voice Settings Panel */}
         {voiceEnabled && showVoiceSettings && (
           <div style={{
             background: '#f9fafb',
@@ -719,7 +692,6 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
-        {/* Emergency Banner */}
         <div style={{
           background: '#fee2e2',
           padding: '12px 16px',
@@ -765,7 +737,6 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
-        {/* Specialty Selector - Saves chat per specialty */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -780,7 +751,6 @@ function VoiceHealthAdvisor() {
               key={specialty.id}
               onClick={() => {
                 setSelectedSpecialty(specialty.id);
-                // Chat will auto-load from localStorage in useEffect
               }}
               style={{
                 display: 'flex',
@@ -814,7 +784,6 @@ function VoiceHealthAdvisor() {
           ))}
         </div>
 
-        {/* Chat Area */}
         <div className="chat-container">
           {messages.length === 0 ? (
             <div className="welcome-message">
@@ -828,7 +797,6 @@ function VoiceHealthAdvisor() {
                   : 'Click the microphone or type your health question!'}
               </p>
 
-              {/* FAQ Toggle Button */}
               <div style={{
                 marginTop: '24px',
                 width: '100%',
@@ -871,7 +839,6 @@ function VoiceHealthAdvisor() {
                   <span>{showFAQ ? '🔽 Hide Quick Questions' : '▶️ Show Quick Questions'}</span>
                 </button>
 
-                {/* FAQ Quick Questions - Collapsible */}
                 {showFAQ && (
                   <div style={{
                     marginTop: '16px',
@@ -1001,7 +968,6 @@ function VoiceHealthAdvisor() {
           )}
         </div>
 
-        {/* New Chat Button - Only show when there are messages */}
         {messages.length > 0 && (
           <div style={{
             padding: '12px 16px',
@@ -1039,7 +1005,6 @@ function VoiceHealthAdvisor() {
           </div>
         )}
 
-        {/* Input Area */}
         <div className="input-container">
           <button
             onClick={isListening ? stopListening : startListening}
@@ -1076,7 +1041,6 @@ function VoiceHealthAdvisor() {
           </button>
         </div>
 
-        {/* Disclaimer */}
         <div className="disclaimer">
           <p>
             ⚠️ AI assistant. Always consult healthcare professionals for medical advice. Emergency? Call 112!
