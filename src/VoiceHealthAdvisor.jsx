@@ -85,7 +85,8 @@ function VoiceHealthAdvisor() {
 const [userLocation, setUserLocation] = useState(null);
 const [detectedCity, setDetectedCity] = useState(null);
 const [locationPermission, setLocationPermission] = useState('pending'); // pending, granted, denied
-  // PWA Install prompt
+const [locationEnabled, setLocationEnabled] = useState(false); // Start disabled 
+// PWA Install prompt
 const [deferredPrompt, setDeferredPrompt] = useState(null);
 const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
@@ -141,8 +142,10 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     }
   }, []);
 
-  // Detect user location
+// Detect user location - only when enabled
 useEffect(() => {
+  if (!locationEnabled) return; // Don't run if disabled
+  
   const detectLocation = async () => {
     // First try HTML5 Geolocation
     if ('geolocation' in navigator) {
@@ -202,8 +205,8 @@ useEffect(() => {
     }
   };
 
-  detectLocation();
-}, []);
+detectLocation();
+}, [locationEnabled]); // Add this dependency!
 // PWA Install prompt handler
 useEffect(() => {
   const handler = (e) => {
