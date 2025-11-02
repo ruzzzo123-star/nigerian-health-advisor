@@ -350,7 +350,6 @@ function VoiceHealthAdvisor() {
         : 'Oops! Something went wrong. Please try again.');
       setLastFailedMessage(messageText);
       
-      // Remove the user message that failed
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -524,7 +523,6 @@ function VoiceHealthAdvisor() {
           )}
         </div>
 
-        {/* Error Banner */}
         {error && (
           <div style={{
             background: '#fee2e2',
@@ -1027,11 +1025,65 @@ function VoiceHealthAdvisor() {
                       gap: '12px',
                       color: '#667eea'
                     }}>
-                      <Loader2 className="loading-spinner" style={{ animation: 'spin 1s linear infinite' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                        Claude is thinking
-                        <span style={{ animation: 'dots 1.5s steps(4, end) infinite' }}>...</span>
-                      </span>
+                      <Loader2 size={20} style={{ 
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                          {(() => {
+                            const healthTips = [
+                              '💡 Drink 8 glasses of water daily',
+                              '🦟 Sleep under a mosquito net',
+                              '🏥 Keep emergency numbers saved',
+                              '💊 Always complete your medication',
+                              '🧼 Wash your hands frequently',
+                              '🌡️ Check your temperature regularly',
+                              '🍎 Eat fruits and vegetables daily',
+                              '😴 Get 7-8 hours of sleep',
+                              '🚶 Exercise for 30 minutes daily',
+                              '📞 Call 112 for emergencies',
+                              '💉 Stay up to date with vaccines',
+                              '🥤 Avoid sugary drinks',
+                              '🍲 Eat balanced Nigerian meals',
+                              '🌞 Get some sunlight every day',
+                              '🧘 Take time to rest and relax'
+                            ];
+
+                            const nigerianPidgin = [
+                              '🇳🇬 Abeg wait small, I dey check am',
+                              '🔍 Make I check wetin fit help you',
+                              '⏳ I dey find answer for you now',
+                              '🤔 One moment, I dey think am',
+                              '💭 I dey reason the matter well well',
+                              '🧠 Make I use my brain check am',
+                              '📚 I dey look for better answer',
+                              '✨ E go clear for you now now',
+                              '🎯 I wan give you correct answer',
+                              '💪 Make I find the best advice',
+                              '🙏 Small time, answer dey come',
+                              '⚡ I go answer you sharp sharp',
+                              '🔥 I dey prepare correct gist for you',
+                              '👌 E go make sense, just wait',
+                              '🌟 Your answer dey come, no worry'
+                            ];
+
+                            const allMessages = [...healthTips, ...nigerianPidgin];
+                            const randomMessage = allMessages[Math.floor(Math.random() * allMessages.length)];
+                            
+                            return randomMessage;
+                          })()}
+                        </span>
+                        <span style={{ 
+                          fontSize: '20px',
+                          display: 'inline-flex',
+                          gap: '2px',
+                          letterSpacing: '2px'
+                        }}>
+                          <span style={{ animation: 'dot1 1.4s infinite' }}>.</span>
+                          <span style={{ animation: 'dot2 1.4s infinite' }}>.</span>
+                          <span style={{ animation: 'dot3 1.4s infinite' }}>.</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1167,10 +1219,19 @@ function VoiceHealthAdvisor() {
           to { transform: rotate(360deg); }
         }
         
-        @keyframes dots {
-          0%, 20% { content: '.'; }
-          40% { content: '..'; }
-          60%, 100% { content: '...'; }
+        @keyframes dot1 {
+          0%, 80%, 100% { opacity: 0; }
+          40% { opacity: 1; }
+        }
+        
+        @keyframes dot2 {
+          0%, 80%, 100% { opacity: 0; }
+          60% { opacity: 1; }
+        }
+        
+        @keyframes dot3 {
+          0%, 80%, 100% { opacity: 0; }
+          80% { opacity: 1; }
         }
       `}</style>
     </div>
