@@ -619,99 +619,67 @@ ${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-
     )}
   </div>
 )}
-        <div style={{
-          background: handsFreeMode ? '#dcfce7' : '#f3f4f6',
-          padding: '16px',
-          borderBottom: '2px solid ' + (handsFreeMode ? '#22c55e' : '#e5e7eb'),
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'center',
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={toggleHandsFreeMode}
-            style={{
-              padding: '12px 24px',
-              background: handsFreeMode ? '#22c55e' : '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
-            }}
-          >
-            <Phone size={20} />
-            {handsFreeMode ? '🔴 End Call Mode' : '📞 Call Mode'}
-          </button>
+{/* Compact Controls - Location Only */}
+<div style={{
+  background: '#f9fafb',
+  padding: '10px 16px',
+  borderBottom: '1px solid #e5e7eb',
+  display: 'flex',
+  gap: '8px',
+  justifyContent: 'center',
+  alignItems: 'center',
+  flexWrap: 'wrap'
+}}>
+  <button
+    onClick={() => setLocationEnabled(!locationEnabled)}
+    style={{
+      padding: '8px 16px',
+      background: locationEnabled ? '#22c55e' : 'white',
+      color: locationEnabled ? 'white' : '#374151',
+      border: '2px solid ' + (locationEnabled ? '#22c55e' : '#e5e7eb'),
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      minHeight: '36px',
+      transition: 'all 0.2s'
+    }}
+  >
+    <span style={{ fontSize: '14px' }}>📍</span>
+    <span>{locationEnabled ? 'Location ON' : 'Location OFF'}</span>
+  </button>
 
-          <button
-            onClick={() => {
-              setVoiceEnabled(!voiceEnabled);
-              if (voiceEnabled) stopSpeaking();
-            }}
-            style={{
-              padding: '12px 24px',
-              background: voiceEnabled ? '#8b5cf6' : '#9ca3af',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
-            }}
-          >
-            {voiceEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-            Voice {voiceEnabled ? 'ON' : 'OFF'}
-          </button>
+  {!locationEnabled && (
+    <span style={{
+      fontSize: '11px',
+      color: '#6b7280',
+      maxWidth: '300px'
+    }}>
+      Enable for personalized emergency numbers
+    </span>
+  )}
+</div>
 
-          {isListening && (
-            <div style={{
-              padding: '12px 24px',
-              background: '#fee2e2',
-              color: '#dc2626',
-              borderRadius: '8px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '15px',
-              animation: 'pulse 1.5s infinite',
-              minHeight: '48px'
-            }}>
-              <Mic size={20} />
-              Listening...
-            </div>
-          )}
-
-          {isSpeaking && (
-            <div style={{
-              padding: '12px 24px',
-              background: '#dbeafe',
-              color: '#2563eb',
-              borderRadius: '8px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '15px',
-              minHeight: '48px'
-            }}>
-              <Volume2 size={20} />
-              Speaking...
-            </div>
-          )}
-        </div>
-
+{/* Location Info Badge */}
+{detectedCity && locationEnabled && (
+  <div style={{
+    background: '#f0fdf4',
+    padding: '8px 16px',
+    borderBottom: '1px solid #86efac',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '6px'
+  }}>
+    <span style={{ fontSize: '14px' }}>📍</span>
+    <span style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>
+      {detectedCity}, Nigeria
+    </span>
+  </div>
+)}
         {error && (
           <div style={{
             background: '#fee2e2',
