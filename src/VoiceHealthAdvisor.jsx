@@ -80,6 +80,11 @@ function VoiceHealthAdvisor() {
   const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
   const [availableVoices, setAvailableVoices] = useState([]);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+
+  // Location state
+const [userLocation, setUserLocation] = useState(null);
+const [detectedCity, setDetectedCity] = useState(null);
+const [locationPermission, setLocationPermission] = useState('pending'); // pending, granted, denied
   // PWA Install prompt
 const [deferredPrompt, setDeferredPrompt] = useState(null);
 const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -135,6 +140,70 @@ const [showInstallPrompt, setShowInstallPrompt] = useState(false);
       synthRef.current.onvoiceschanged = loadVoices;
     }
   }, []);
+
+  // Detect user location
+useEffect(() => {
+  const detectLocation = async () => {
+    // First try HTML5 Geolocation
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lon: longitude });
+          setLocationPermission('granted');
+          
+          // Reverse geocode to get city
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            
+            const city = data.address.city || 
+                        data.address.town || 
+                        data.address.state_district || 
+                        data.address.state;
+            
+            setDetectedCity(city);
+            console.log('🗺️ Detected location:', city);
+          } catch (error) {
+            console.error('Geocoding error:', error);
+          }
+        },
+        (error) => {
+          console.log('Location permission denied or unavailable');
+          setLocationPermission('denied');
+          // Fallback: Try to detect from IP
+          detectFromIP();
+        },
+        {
+          timeout: 10000,
+          enableHighAccuracy: false
+        }
+      );
+    } else {
+      // Fallback to IP-based detection
+      detectFromIP();
+    }
+  };
+
+  const detectFromIP = async () => {
+    try {
+      // Using ipapi.co - free tier, no API key needed
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      
+      setDetectedCity(data.city);
+      setUserLocation({ lat: data.latitude, lon: data.longitude });
+      console.log('🌐 Detected from IP:', data.city);
+    } catch (error) {
+      console.error('IP detection failed:', error);
+      setDetectedCity('Nigeria'); // Fallback
+    }
+  };
+
+  detectLocation();
+}, []);
 // PWA Install prompt handler
 useEffect(() => {
   const handler = (e) => {
@@ -322,9 +391,10 @@ const handleInstallClick = async () => {
     setError(null);
 
     try {
-      const nigerianContext = `
-      You are a health advisor for Nigerian patients. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
-      `;
+   const nigerianContext = `
+You are a health advisor for Nigerian patients${detectedCity ? ` in ${detectedCity}` : ''}. Focus on common diseases (malaria, typhoid), local medications, and affordable treatments. Keep responses under 3 sentences for voice output.
+${detectedCity ? `\nUser's location: ${detectedCity}, Nigeria. Provide location-specific advice when relevant.` : ''}
+`;
       
       const specialtyPrompts = {
         general: `You are a General Health advisor for Nigeria. ${nigerianContext}`,
@@ -459,7 +529,32 @@ const handleInstallClick = async () => {
             }}>🇳🇬</span>
           </div>
         </div>
-
+{/* Location Badge */}
+{detectedCity && (
+  <div style={{
+    background: '#f0fdf4',
+    padding: '10px 16px',
+    borderBottom: '1px solid #86efac',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '8px'
+  }}>
+    <span style={{ fontSize: '16px' }}>📍</span>
+    <span style={{ fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
+      Detected: {detectedCity}, Nigeria
+    </span>
+    {locationPermission === 'denied' && (
+      <span style={{ 
+        fontSize: '11px', 
+        color: '#6b7280',
+        marginLeft: '4px'
+      }}>
+        (approximate)
+      </span>
+    )}
+  </div>
+)}
         <div style={{
           background: handsFreeMode ? '#dcfce7' : '#f3f4f6',
           padding: '16px',
@@ -899,51 +994,91 @@ const handleInstallClick = async () => {
         )}
 
         <div style={{
-          background: '#fee2e2',
-          padding: '12px 16px',
-          borderBottom: '2px solid #ef4444',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Phone size={18} color="#dc2626" />
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
-              Emergency? Call 112 | NCDC: 0800-9700-0010
-            </span>
-          </div>
-          <button
-            onClick={() => setShowEmergency(!showEmergency)}
-            style={{
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              minHeight: '40px'
-            }}
-          >
-            {showEmergency ? 'Hide' : 'Show'}
-          </button>
-        </div>
+  background: '#fee2e2',
+  padding: '12px 16px',
+  borderBottom: '2px solid #ef4444',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '8px'
+}}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <Phone size={18} color="#dc2626" />
+    <span style={{ fontSize: '14px', fontWeight: '600', color: '#991b1b' }}>
+      {(() => {
+        const cityName = detectedCity?.toLowerCase() || '';
+        
+        if (cityName.includes('lagos')) {
+          return 'Emergency? Lagos: 767 / 112 | Ambulance: 08023147654';
+        } else if (cityName.includes('abuja')) {
+          return 'Emergency? Abuja: 112 | Ambulance: 08037245625';
+        } else {
+          return 'Emergency? Call 112 | NCDC: 0800-9700-0010';
+        }
+      })()}
+    </span>
+  </div>
+  <button
+    onClick={() => setShowEmergency(!showEmergency)}
+    style={{
+      background: '#dc2626',
+      color: 'white',
+      border: 'none',
+      padding: '8px 16px',
+      borderRadius: '6px',
+      fontSize: '13px',
+      cursor: 'pointer',
+      minHeight: '40px'
+    }}
+  >
+    {showEmergency ? 'Hide' : 'Show'}
+  </button>
+</div>
 
-        {showEmergency && (
-          <div style={{
-            background: '#fef2f2',
-            padding: '16px',
-            borderBottom: '1px solid #fecaca',
-            fontSize: '14px'
-          }}>
-            <div><strong>Lagos:</strong> {EMERGENCY_CONTACTS.Lagos.emergency}</div>
-            <div><strong>Abuja:</strong> {EMERGENCY_CONTACTS.Abuja.emergency}</div>
-            <div><strong>NCDC:</strong> {EMERGENCY_CONTACTS.General.ncdc}</div>
-          </div>
-        )}
-
+{showEmergency && (
+  <div style={{
+    background: '#fef2f2',
+    padding: '16px',
+    borderBottom: '1px solid #fecaca',
+    fontSize: '14px'
+  }}>
+    {(() => {
+      const cityName = detectedCity?.toLowerCase() || '';
+      
+      if (cityName.includes('lagos')) {
+        return (
+          <>
+            <div><strong>📍 Lagos Emergency Numbers:</strong></div>
+            <div>Emergency: 767 / 112</div>
+            <div>Ambulance: 08023147654</div>
+            <div>LASEMA: 767</div>
+            <div>NCDC: 0800-9700-0010</div>
+          </>
+        );
+      } else if (cityName.includes('abuja')) {
+        return (
+          <>
+            <div><strong>📍 Abuja Emergency Numbers:</strong></div>
+            <div>Emergency: 112</div>
+            <div>Ambulance: 08037245625</div>
+            <div>NCDC: 0800-9700-0010</div>
+          </>
+        );
+      } else {
+        return (
+          <>
+            <div><strong>📍 Nigeria Emergency Numbers:</strong></div>
+            <div>Emergency: 112 (National)</div>
+            <div>NCDC: 0800-9700-0010</div>
+            <div>Lagos: 767</div>
+            <div>For your city-specific numbers, search "{detectedCity || 'your city'} emergency numbers"</div>
+          </>
+        );
+      }
+    })()}
+  </div>
+)}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
