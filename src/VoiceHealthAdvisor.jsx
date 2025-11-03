@@ -1,101 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, VolumeX, Phone, WifiOff, RefreshCw, Settings, X, MapPin } from 'lucide-react';
+import { Send, Bot, User, Heart, Loader2, Mic, MicOff, Volume2, Sparkles, Phone, WifiOff, RefreshCw, Settings, X, MapPin, Zap } from 'lucide-react';
 import './App.css';
 
 const SPECIALTIES = [
-  { 
-    id: 'general', 
-    name: 'General Health', 
-    icon: '🏥', 
-    color: '#3B82F6',
-    lightColor: '#DBEAFE',
-    quickQuestions: [
-      { icon: '🤒', text: 'Treat fever?', query: 'How do I treat high fever at home?' },
-      { icon: '🤕', text: 'Headache relief?', query: 'What helps with severe headaches?' },
-      { icon: '🤧', text: 'Common cold?', query: 'How to treat common cold?' },
-      { icon: '💊', text: 'Pain relief?', query: 'What painkillers are safe in Nigeria?' },
-    ]
-  },
-  { 
-    id: 'malaria', 
-    name: 'Malaria', 
-    icon: '🦟', 
-    color: '#F59E0B',
-    lightColor: '#FEF3C7',
-    quickQuestions: [
-      { icon: '🦟', text: 'Symptoms?', query: 'What are malaria symptoms?' },
-      { icon: '💊', text: 'Treatment?', query: 'Best malaria medication in Nigeria?' },
-      { icon: '🤒', text: 'Typhoid?', query: 'How do I know if I have typhoid?' },
-      { icon: '🛡️', text: 'Prevention?', query: 'How to prevent malaria?' },
-    ]
-  },
-  { 
-    id: 'maternal', 
-    name: 'Maternal', 
-    icon: '🤰', 
-    color: '#EC4899',
-    lightColor: '#FCE7F3',
-    quickQuestions: [
-      { icon: '🤰', text: 'Diet?', query: 'What should I eat during pregnancy?' },
-      { icon: '🏥', text: 'Care?', query: 'Where can I get antenatal care?' },
-      { icon: '💊', text: 'Safe meds?', query: 'What medicines are safe?' },
-      { icon: '👶', text: 'Warning signs?', query: 'Pregnancy emergency symptoms?' },
-    ]
-  },
-  { 
-    id: 'nutrition', 
-    name: 'Nutrition', 
-    icon: '🥗', 
-    color: '#10B981',
-    lightColor: '#D1FAE5',
-    quickQuestions: [
-      { icon: '🍎', text: 'Healthy foods?', query: 'Healthy Nigerian foods?' },
-      { icon: '💪', text: 'Weight loss?', query: 'How to lose weight?' },
-      { icon: '🥛', text: 'Vitamins?', query: 'Vitamin sources?' },
-      { icon: '👶', text: 'Baby food?', query: 'Best foods for babies?' },
-    ]
-  },
-  { 
-    id: 'child', 
-    name: 'Child Health', 
-    icon: '👶', 
-    color: '#FBBF24',
-    lightColor: '#FEF3C7',
-    quickQuestions: [
-      { icon: '💉', text: 'Vaccines?', query: 'Child vaccination schedule?' },
-      { icon: '🤒', text: 'Fever?', query: 'Treat child fever?' },
-      { icon: '🍼', text: 'Feeding?', query: 'Child won\'t eat?' },
-      { icon: '⚠️', text: 'Emergency?', query: 'When to see doctor?' },
-    ]
-  },
-  { 
-    id: 'mental', 
-    name: 'Mental', 
-    icon: '🧠', 
-    color: '#8B5CF6',
-    lightColor: '#EDE9FE',
-    quickQuestions: [
-      { icon: '😢', text: 'Depression?', query: 'Deal with depression?' },
-      { icon: '😰', text: 'Anxiety?', query: 'Manage anxiety?' },
-      { icon: '😴', text: 'Sleep?', query: 'Can\'t sleep well?' },
-      { icon: '🆘', text: 'Help?', query: 'Mental health support?' },
-    ]
-  },
+  { id: 'general', name: 'General', icon: '🏥', gradient: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)', bg: 'rgba(102, 126, 234, 0.1)' },
+  { id: 'malaria', name: 'Malaria', icon: '🦟', gradient: 'linear-gradient(135deg, #F093FB 0%, #F5576C 100%)', bg: 'rgba(240, 147, 251, 0.1)' },
+  { id: 'maternal', name: 'Maternal', icon: '🤰', gradient: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)', bg: 'rgba(250, 112, 154, 0.1)' },
+  { id: 'nutrition', name: 'Nutrition', icon: '🥗', gradient: 'linear-gradient(135deg, #30CCD5 0%, #38EF7D 100%)', bg: 'rgba(48, 204, 213, 0.1)' },
+  { id: 'child', name: 'Child', icon: '👶', gradient: 'linear-gradient(135deg, #FFD89B 0%, #19547B 100%)', bg: 'rgba(255, 216, 155, 0.1)' },
+  { id: 'mental', name: 'Mental', icon: '🧠', gradient: 'linear-gradient(135deg, #A8EDEA 0%, #FED6E3 100%)', bg: 'rgba(168, 237, 234, 0.1)' },
 ];
 
 const saveToLocalStorage = (key, data) => {
-  const item = { data: data, timestamp: Date.now(), expiresAt: Date.now() + (24 * 60 * 60 * 1000) };
-  localStorage.setItem(key, JSON.stringify(item));
+  localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now(), expiresAt: Date.now() + 86400000 }));
 };
 
 const getFromLocalStorage = (key) => {
-  const itemStr = localStorage.getItem(key);
-  if (!itemStr) return null;
+  const item = localStorage.getItem(key);
+  if (!item) return null;
   try {
-    const item = JSON.parse(itemStr);
-    if (Date.now() > item.expiresAt) { localStorage.removeItem(key); return null; }
-    return item.data;
-  } catch (e) { return null; }
+    const parsed = JSON.parse(item);
+    if (Date.now() > parsed.expiresAt) { localStorage.removeItem(key); return null; }
+    return parsed.data;
+  } catch { return null; }
 };
 
 function VoiceHealthAdvisor() {
@@ -103,25 +30,10 @@ function VoiceHealthAdvisor() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState('general');
-  const [showEmergency, setShowEmergency] = useState(false);
-  const [showSpecialtyQuestions, setShowSpecialtyQuestions] = useState(false);
   const [error, setError] = useState(null);
-  const [lastFailedMessage, setLastFailedMessage] = useState(null);
   const [isListening, setIsListening] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceRate, setVoiceRate] = useState(0.92);
-  const [voicePitch, setVoicePitch] = useState(1.12);
-  const [selectedVoiceName, setSelectedVoiceName] = useState('auto');
-  const [availableVoices, setAvailableVoices] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const [detectedCity, setDetectedCity] = useState(null);
-  const [locationPermission, setLocationPermission] = useState('pending');
-  const [locationEnabled, setLocationEnabled] = useState(false);
   const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const synthRef = useRef(window.speechSynthesis);
 
   useEffect(() => {
     const saved = getFromLocalStorage(`chat_${selectedSpecialty}`);
@@ -131,26 +43,10 @@ function VoiceHealthAdvisor() {
   useEffect(() => { 
     if (messages.length > 0) saveToLocalStorage(`chat_${selectedSpecialty}`, messages); 
   }, [messages, selectedSpecialty]);
-  
+
   useEffect(() => { 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
   }, [messages]);
-
-  const shareToWhatsApp = (text) => { 
-    const url = `https://wa.me/?text=${encodeURIComponent(text + '\n\nFrom Nigerian Health Advisor\nhttps://naija-health-advisor.vercel.app')}`; 
-    window.open(url, '_blank'); 
-  };
-  
-  const copyToClipboard = async (text, e) => { 
-    try { 
-      await navigator.clipboard.writeText(text); 
-      const btn = e.target.closest('button'); 
-      const orig = btn.innerHTML; 
-      btn.innerHTML = '✅ Copied!'; 
-      btn.style.background = '#10B981'; 
-      setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#6B7280'; }, 2000); 
-    } catch {} 
-  };
 
   const sendMessage = async (voiceInput = null) => {
     const messageText = voiceInput || input;
@@ -167,18 +63,15 @@ function VoiceHealthAdvisor() {
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 256,
-          system: `You are a Nigerian health advisor. Keep responses under 3 sentences.`,
+          system: 'You are a Nigerian health advisor. Keep responses under 3 sentences.',
           messages: [...messages.slice(-6), userMessage],
         }),
       });
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      if (!response.ok) throw new Error('Server error');
       const data = await response.json();
-      if (data.content?.[0]) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.content[0].text }]);
-      }
+      if (data.content?.[0]) setMessages(prev => [...prev, { role: 'assistant', content: data.content[0].text }]);
     } catch (error) {
-      setError('Connection lost! Please try again.');
-      setLastFailedMessage(messageText);
+      setError('Connection lost!');
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -188,94 +81,189 @@ function VoiceHealthAdvisor() {
   const currentSpecialty = SPECIALTIES.find(s => s.id === selectedSpecialty);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-      {/* Clean Header */}
-      <div style={{ background: 'white', borderBottom: '1px solid #E5E7EB', padding: '20px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(180deg, #667EEA 0%, #764BA2 50%, #F093FB 100%)',
+      backgroundAttachment: 'fixed',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      
+      {/* Animated Background Blobs */}
+      <div style={{ position: 'fixed', top: '-100px', right: '-100px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', borderRadius: '50%', animation: 'float 6s ease-in-out infinite' }}></div>
+      <div style={{ position: 'fixed', bottom: '-150px', left: '-150px', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'float 8s ease-in-out infinite reverse' }}></div>
+
+      {/* Glass Header */}
+      <div style={{ 
+        background: 'rgba(255, 255, 255, 0.15)', 
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '20px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0' }}>Health Advisor</h1>
-            <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>Your Nigerian health companion</p>
+            <h1 style={{ fontSize: '28px', fontWeight: '900', color: 'white', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={28} /> Health Advisor
+            </h1>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', margin: 0, fontWeight: '600' }}>AI-powered Nigerian health companion</p>
           </div>
-          <button onClick={() => setShowSettings(!showSettings)} style={{ background: '#F3F4F6', border: 'none', width: '40px', height: '40px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Settings size={20} color="#6B7280" />
+          <button onClick={() => setShowSettings(!showSettings)} style={{ 
+            background: 'rgba(255,255,255,0.2)', 
+            border: 'none', 
+            width: '44px', 
+            height: '44px', 
+            borderRadius: '50%', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          }}>
+            <Settings size={22} color="white" />
           </button>
         </div>
       </div>
 
-      {detectedCity && locationEnabled && (
-        <div style={{ background: '#ECFDF5', padding: '10px', textAlign: 'center', borderBottom: '1px solid #D1FAE5' }}>
-          <MapPin size={14} style={{ display: 'inline', marginRight: '6px' }} color="#059669" />
-          <span style={{ fontSize: '13px', color: '#059669', fontWeight: '500' }}>{detectedCity}, Nigeria</span>
-        </div>
-      )}
-
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 0 100px 0' }}>
+      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '0 20px 140px' }}>
         
-        {/* Specialty Pills */}
-        <div style={{ padding: '20px', display: 'flex', gap: '10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {/* Premium Specialty Cards */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '14px', 
+          padding: '24px 0',
+          position: 'relative',
+          zIndex: 1
+        }}>
           {SPECIALTIES.map(s => (
-            <button key={s.id} onClick={() => { setSelectedSpecialty(s.id); setShowSpecialtyQuestions(false); }}
-              style={{ background: selectedSpecialty === s.id ? s.color : 'white', color: selectedSpecialty === s.id ? 'white' : '#374151', border: `2px solid ${selectedSpecialty === s.id ? s.color : '#E5E7EB'}`, borderRadius: '20px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', boxShadow: selectedSpecialty === s.id ? '0 4px 12px rgba(0,0,0,0.1)' : 'none' }}>
-              {s.icon} {s.name}
+            <button key={s.id} onClick={() => setSelectedSpecialty(s.id)}
+              style={{ 
+                background: selectedSpecialty === s.id ? s.gradient : 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                color: selectedSpecialty === s.id ? 'white' : '#374151',
+                border: selectedSpecialty === s.id ? '2px solid rgba(255,255,255,0.5)' : '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '20px',
+                padding: '20px 12px',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                boxShadow: selectedSpecialty === s.id ? '0 12px 32px rgba(0,0,0,0.25)' : '0 4px 16px rgba(0,0,0,0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                transform: selectedSpecialty === s.id ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
+                letterSpacing: '0.5px'
+              }}>
+              <span style={{ fontSize: '36px', filter: selectedSpecialty === s.id ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' : 'none' }}>{s.icon}</span>
+              <span style={{ fontSize: '10px', lineHeight: '1.2', textAlign: 'center' }}>{s.name}</span>
             </button>
           ))}
         </div>
 
-        {/* Quick Questions */}
-        {currentSpecialty && (
-          <div style={{ padding: '0 20px 20px' }}>
-            <button onClick={() => setShowSpecialtyQuestions(!showSpecialtyQuestions)}
-              style={{ width: '100%', background: 'white', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '600', color: currentSpecialty.color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              {showSpecialtyQuestions ? '▲' : '▼'} Quick Questions
-            </button>
-            {showSpecialtyQuestions && (
-              <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                {currentSpecialty.quickQuestions.map((q, i) => (
-                  <button key={i} onClick={() => { sendMessage(q.query); setShowSpecialtyQuestions(false); }}
-                    style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '12px', fontSize: '13px', cursor: 'pointer', textAlign: 'left', fontWeight: '500', color: '#374151', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { e.target.style.borderColor = currentSpecialty.color; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
-                    onMouseLeave={e => { e.target.style.borderColor = '#E5E7EB'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}>
-                    <span style={{ fontSize: '20px', marginRight: '8px' }}>{q.icon}</span>{q.text}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Chat */}
-        <div style={{ padding: '0 20px' }}>
+        {/* Premium Chat Container */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
           {messages.length === 0 ? (
-            <div style={{ background: 'white', borderRadius: '16px', padding: '60px 40px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>{currentSpecialty.icon}</div>
-              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>{currentSpecialty.name}</h2>
-              <p style={{ fontSize: '14px', color: '#6B7280' }}>Ask a question or select one above</p>
+            <div style={{ 
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              padding: '60px 40px',
+              textAlign: 'center',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: currentSpecialty.gradient }}></div>
+              <div style={{ fontSize: '72px', marginBottom: '20px', animation: 'bounce 2s infinite' }}>{currentSpecialty.icon}</div>
+              <h2 style={{ fontSize: '26px', fontWeight: '900', background: currentSpecialty.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '10px' }}>
+                {currentSpecialty.name} Health
+              </h2>
+              <p style={{ fontSize: '16px', color: '#6B7280', fontWeight: '500', marginBottom: '24px' }}>Ask me anything about your health! 💬</p>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: currentSpecialty.bg, padding: '10px 20px', borderRadius: '16px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>
+                <Zap size={16} /> Powered by AI
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {messages.map((msg, i) => (
-                <div key={i} style={{ display: 'flex', gap: '12px', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: msg.role === 'user' ? currentSpecialty.color : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {msg.role === 'user' ? <User size={18} color="white" /> : <Bot size={18} color="#6B7280" />}
+                <div key={i} style={{ display: 'flex', gap: '12px', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
+                  <div style={{ 
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: msg.role === 'user' ? currentSpecialty.gradient : 'rgba(255,255,255,0.95)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    border: '2px solid rgba(255,255,255,0.5)'
+                  }}>
+                    {msg.role === 'user' ? <User size={20} color="white" /> : <Bot size={20} color="#667EEA" />}
                   </div>
-                  <div style={{ maxWidth: '70%' }}>
-                    <div style={{ background: msg.role === 'user' ? currentSpecialty.lightColor : 'white', padding: '12px 16px', borderRadius: '16px', fontSize: '14px', lineHeight: '1.5', color: '#111827', boxShadow: msg.role === 'assistant' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none' }}>
+                  <div style={{ maxWidth: '75%' }}>
+                    <div style={{ 
+                      background: msg.role === 'user' ? currentSpecialty.gradient : 'rgba(255,255,255,0.95)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                      color: msg.role === 'user' ? 'white' : '#111827',
+                      padding: '16px 20px',
+                      borderRadius: msg.role === 'user' ? '24px 24px 4px 24px' : '24px 24px 24px 4px',
+                      fontSize: '15px',
+                      lineHeight: '1.6',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      fontWeight: '500',
+                      border: msg.role === 'assistant' ? '2px solid rgba(255,255,255,0.3)' : 'none'
+                    }}>
                       {msg.content}
                     </div>
                     {msg.role === 'assistant' && (
-                      <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
-                        <button onClick={() => shareToWhatsApp(msg.content)} style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: '500', color: '#6B7280' }}>Share</button>
-                        <button onClick={(e) => copyToClipboard(msg.content, e)} style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: '500', color: '#6B7280' }}>Copy</button>
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <button style={{ 
+                          background: 'rgba(255,255,255,0.9)',
+                          backdropFilter: 'blur(10px)',
+                          border: '2px solid rgba(255,255,255,0.3)',
+                          borderRadius: '12px',
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          fontWeight: '700',
+                          color: '#667EEA',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <span style={{ fontSize: '16px' }}>✨</span> Share
+                        </button>
                       </div>
                     )}
                   </div>
                 </div>
               ))}
               {isLoading && (
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={18} color="#6B7280" /></div>
-                  <div style={{ background: 'white', padding: '12px 16px', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <Loader2 size={16} color={currentSpecialty.color} style={{ animation: 'spin 1s linear infinite' }} />
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(255,255,255,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '2px solid rgba(255,255,255,0.5)' }}>
+                    <Bot size={20} color="#667EEA" />
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', padding: '16px 20px', borderRadius: '24px 24px 24px 4px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '2px solid rgba(255,255,255,0.3)' }}>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSpecialty.gradient, animation: 'bounce1 1.4s infinite' }}></div>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSpecialty.gradient, animation: 'bounce2 1.4s infinite' }}></div>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSpecialty.gradient, animation: 'bounce3 1.4s infinite' }}></div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -285,21 +273,86 @@ function VoiceHealthAdvisor() {
         </div>
       </div>
 
-      {/* Input */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderTop: '1px solid #E5E7EB', padding: '16px', boxShadow: '0 -4px 12px rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button onClick={() => {}} style={{ width: '44px', height: '44px', borderRadius: '12px', background: isListening ? '#EF4444' : currentSpecialty.color, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {isListening ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
+      {/* Premium Floating Input */}
+      <div style={{ 
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: '24px 20px',
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(40px)',
+        WebkitBackdropFilter: 'blur(40px)',
+        borderTop: '1px solid rgba(255,255,255,0.2)',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+        zIndex: 100
+      }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button style={{ 
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: isListening ? 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' : currentSpecialty.gradient,
+            border: '2px solid rgba(255,255,255,0.5)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+            flexShrink: 0,
+            transition: 'all 0.3s'
+          }}>
+            {isListening ? <MicOff size={26} color="white" /> : <Mic size={26} color="white" />}
           </button>
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => { if (e.key === 'Enter') sendMessage(); }} placeholder="Type your question..." style={{ flex: 1, background: '#F3F4F6', border: 'none', borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }} />
-          <button onClick={() => sendMessage()} disabled={!input.trim()} style={{ width: '44px', height: '44px', borderRadius: '12px', background: input.trim() ? currentSpecialty.color : '#E5E7EB', border: 'none', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Send size={20} color="white" />
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input 
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyPress={e => { if (e.key === 'Enter') sendMessage(); }}
+              placeholder="Type your health question..."
+              style={{ 
+                width: '100%',
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '28px',
+                padding: '16px 24px',
+                fontSize: '15px',
+                outline: 'none',
+                fontWeight: '500',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                color: '#111827'
+              }}
+            />
+          </div>
+          <button 
+            onClick={() => sendMessage()}
+            disabled={!input.trim()}
+            style={{ 
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: input.trim() ? currentSpecialty.gradient : 'rgba(156, 163, 175, 0.5)',
+              border: '2px solid rgba(255,255,255,0.5)',
+              cursor: input.trim() ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: input.trim() ? '0 8px 24px rgba(0,0,0,0.2)' : 'none',
+              flexShrink: 0,
+              transition: 'all 0.3s'
+            }}>
+            <Send size={24} color="white" />
           </button>
         </div>
       </div>
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, 20px); } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes bounce1 { 0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; } 40% { transform: scale(1.2); opacity: 1; } }
+        @keyframes bounce2 { 0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } }
+        @keyframes bounce3 { 0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; } 60% { transform: scale(1.2); opacity: 1; } }
         * { -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { display: none; }
       `}</style>
